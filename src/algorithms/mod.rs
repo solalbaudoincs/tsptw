@@ -3,14 +3,17 @@ use crate::problem::{evaluation::Evaluation, instance::Instance, solution::Popul
 
 mod hill_climbing;
 pub use hill_climbing::HillClimbing;
+mod simulated_annealing;
+pub use simulated_annealing::SimulatedAnnealing;
 
 pub trait Metaheuristic {
-    fn step(&mut self, 
-            population: &mut Population, 
-            best: usize,
-            instance: &Instance, 
-            neighbourhood: &NeighbourhoodGenerator, 
-            evaluation: &dyn Evaluation
-        );
-        // a metaheuristic makes a step in the optimization process, it modifies the population and the best solution index
+    fn step<Eval: Evaluation, N: NeighbourhoodGenerator>(
+        &mut self,
+        population: &mut Population,
+        best: usize,
+        instance: &Instance,
+        neighbourhood: &N,
+        evaluation: &Eval,
+    );
+    // a metaheuristic makes a step in the optimization process, it modifies the population and the best solution index
 }

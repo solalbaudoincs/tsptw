@@ -1,51 +1,141 @@
-mod problem;
-mod neighbourhood;
 mod algorithms;
+mod neighbourhood;
+mod problem;
 mod runner;
 
-use algorithms::HillClimbing;
-use neighbourhood::swap_neighbourhood;
+use std::f32::consts::E;
+
+use algorithms::{HillClimbing, SimulatedAnnealing};
+use neighbourhood::{TwoOpt, Swap};
 use problem::{
-    evaluation::Lexicographic,
+    evaluation::{Lexicographic},
     instance::Instance,
     solution::{Population, Solution},
 };
-use runner::{run, RunConfig};
+use runner::{RunConfig, run};
+
+use problem::evaluation::utils::run_solution;
+
+use crate::problem::evaluation::Weighted;
+
+
+const CHALLENGE_PATHS: [&str; 3] = [
+    "data/inst1",
+    "data/inst2",
+    "data/inst3",
+];
+
+const EXAMPLE_SOLUTION_PATHS: [&str; 3] = [
+    "data/inst1.sol",
+    "data/inst2.sol",
+    "data/inst3.sol",
+];
+
+const CHALLENGE_NB : usize = 1; 
 
 fn main() {
-    let instance = problem::instance::io::load_instance("data/inst1");
-    let mut population = build_initial_population(&instance);
+    let instance = problem::instance::io::load_instance(CHALLENGE_PATHS[CHALLENGE_NB-1]);
+    let evaluation = Weighted{violation_coefficient : 100.0};
+    let config = RunConfig {
+        max_iterations: 10000,
+    };
 
-    let evaluation = Lexicographic::new(true);
-    let mut algorithm = HillClimbing::new(100);
-    let config = RunConfig { max_iterations: 25 };
-
-    match run(
+    let mut sa_population = build_initial_population(&instance);
+    let neighbourhood = TwoOpt;
+    let sa_init_temp = SimulatedAnnealing::estimate_initial_temperature(
         &instance,
-        &mut population,
-        &mut algorithm,
-        swap_neighbourhood,
+        &sa_population[0],
+        &neighbourhood,
+        10000,
+        0.01,
+        &evaluation,
+    );
+    println!("Estimated SA temperature: {}", sa_init_temp);
+    let sa_min_temp = sa_init_temp * 0.0005;
+    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.99, sa_min_temp);
+    let sa_best = run(
+        &instance,
+        &mut sa_population,
+        &mut sa_algorithm,
+        &neighbourhood,
         &evaluation,
         &config,
-    ) {
-        Some(best_idx) => {
-            let best = &population[best_idx];
-            let preview: Vec<u32> = best.sol_list.iter().cloned().take(5).collect();
-            println!(
-                "Runner finished. Best solution visits {} nodes. Prefix: {:?}",
-                best.sol_list.len(), preview
-            );
+    );
+    report_result("Simulated Annealing", &instance, &sa_population, sa_best);
+
+    let example_solution = problem::solution::io::load_solution(EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB-1]);
+    match example_solution {
+        Ok(sol) => {
+            let (dist, viol) = run_solution(&instance, &sol);
+            println!("Example solution performance: total_distance={}, total_violation={}", dist, viol);
         }
-        None => eprintln!("Runner aborted: population is empty."),
+        Err(e) => println!("Failed to load example solution: {}", e),
     }
 }
 
 fn build_initial_population(instance: &Instance) -> Population {
-    let mut route: Vec<u32> = instance.graph.keys().copied().collect();
-    route.sort_unstable();
+    let route: Vec<u32> = instance.graph.keys().copied().collect();
+    let mut greedy_route: Vec<u32> = Vec::new();
+    //first search for admissible time window
+    for &node_id in &route {
+        let node = &instance.graph[&node_id];
+        if node.wstart == 0.0 {
+            greedy_route.push(node_id);
+            break;
+        }
+    }
+    //then greedily add nodes with the earliest time window start
+    while greedy_route.len() < route.len() {
+        let mut next_node_id: Option<u32> = None;
+        let mut earliest_wstart = f64::INFINITY;
+        for &node_id in &route {
+            if greedy_route.contains(&node_id) {
+                continue;
+            }
+            let node = &instance.graph[&node_id];
+            if node.wstart < earliest_wstart {
+                earliest_wstart = node.wstart;
+                next_node_id = Some(node_id);
+            }
+        }
+        if let Some(nid) = next_node_id {
+            greedy_route.push(nid);
+        } else {
+            break;
+        }
+    }
 
     vec![Solution {
         sol_list: route,
         sol_val: None,
     }]
+    
+}
+
+fn report_result(
+    name: &str,
+    instance: &Instance,
+    population: &Population,
+    best_idx: Option<usize>,
+) {
+    match best_idx {
+        Some(idx) => {
+            let best = &population[idx];
+            println!(
+                "{} finished. Best solution visits {} nodes. Full solution {}",
+                name,
+                best.sol_list.len(),
+                best.sol_list.iter()
+                    .map(|n| n.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" -> ")
+            );
+            let (total_distance, total_violation) = run_solution(instance, best);
+            println!(
+                "{} performance: total_distance={}, total_violation={} ",
+                name, total_distance, total_violation
+            );
+        }
+        None => eprintln!("{} aborted: population is empty.", name),
+    }
 }

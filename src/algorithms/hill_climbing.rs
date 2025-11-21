@@ -15,19 +15,19 @@ impl HillClimbing {
 }
 
 impl Metaheuristic for HillClimbing {
-    fn step(
+    fn step<Eval: Evaluation, N: NeighbourhoodGenerator>(
         &mut self,
         population: &mut Population,
         best: usize,
         instance: &Instance,
-        neighbourhood: &NeighbourhoodGenerator,
-        evaluation: &dyn Evaluation,
+        neighbourhood: &N,
+        evaluation: &Eval,
     ) {
         if population.is_empty() || best >= population.len() {
             return;
         }
 
-        let mut neighbours = neighbourhood(&population[best]);
+        let mut neighbours = neighbourhood.generate(&population[best]);
         for neighbour in neighbours.by_ref().take(self.max_iterations as usize) {
             if evaluation.compare(instance, &neighbour, &population[best]) == Ordering::Less {
                 population[best] = neighbour;

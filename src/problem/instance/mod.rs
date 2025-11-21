@@ -11,11 +11,6 @@ pub struct Node {
 }
 
 pub struct Instance {
-    pub graph: HashMap<u32, Node>,
-    pub distance_matrix: HashMap<(u32, u32), f64>,
-}
-
-
-pub fn distance(n1 : &Node, n2 : &Node) -> f64 {
-    ((n1.x - n2.x).powi(2) + (n1.y - n2.y).powi(2)).sqrt()
+    pub graph: Vec<Node>,
+    pub distance_matrix: Vec<Vec<f64>>,
 }
