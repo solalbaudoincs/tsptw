@@ -1,18 +1,20 @@
-use crate::neighbourhood::NeighbourhoodGenerator;
-use crate::problem::{evaluation::Evaluation, instance::Instance, solution::Population};
+use crate::shared_types::{Instance, Population, Fitnesses};
+use crate::problem::evaluation::Evaluation;
 
 mod hill_climbing;
 pub use hill_climbing::HillClimbing;
+
 mod simulated_annealing;
 pub use simulated_annealing::SimulatedAnnealing;
 
+mod ga;
+
 pub trait Metaheuristic {
-    fn step<Eval: Evaluation, N: NeighbourhoodGenerator>(
+    fn step<Eval: Evaluation>(
         &mut self,
         population: &mut Population,
-        best: usize,
+        fitness: &mut Fitnesses,
         instance: &Instance,
-        neighbourhood: &N,
         evaluation: &Eval,
     );
     // a metaheuristic makes a step in the optimization process, it modifies the population and the best solution index
