@@ -8,13 +8,13 @@ pub fn run_solution(instance: &Instance, solution: &Solution) -> (f64, f64) {
     let mut total_violation = 0.0;
     let mut total_time = 0.0;
 
-    let mut visit_edge = |from: u32, to: u32| {
-        let travel_time = instance.distance_matrix[&(from, to)];
+    let mut visit_edge = |from: usize, to: usize| {
+        let travel_time = instance.distance_matrix[from][to as usize];
         total_distance += travel_time;
         total_time   += travel_time;
         
-        let window_start = instance.graph[&to].wstart;
-        let window_end = instance.graph[&to].wend;
+        let window_start = instance.graph[to].wstart;
+        let window_end = instance.graph[to].wend;
         if total_time < window_start {
             //println!("waiting at node {} from time {:.2} to {:.2}", to, total_time, window_start);
             total_time = window_start;
@@ -32,11 +32,11 @@ pub fn run_solution(instance: &Instance, solution: &Solution) -> (f64, f64) {
 
     if !solution.sol_list.is_empty() {
         for window in solution.sol_list.windows(2) {
-            visit_edge(window[0], window[1]);
+            visit_edge(window[0] as usize, window[1] as usize);
         }
-        let last = *solution.sol_list.last().unwrap();
+        let last  = *solution.sol_list.last().unwrap();
         let first = solution.sol_list[0];
-        visit_edge(last, first);
+        visit_edge(last as usize, first as usize);
     }
 
     
