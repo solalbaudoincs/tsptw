@@ -12,7 +12,7 @@ pub struct Weighted {
 impl Evaluation for Weighted {
     fn score(&self, problem: &Instance, solution: &Solution) -> f64 {
         let (distance, violation) = run_solution(problem, solution);
-        self.violation_coefficient * violation +  distance
+        self.violation_coefficient * violation + distance
     }
     fn compare(&self, problem: &Instance, a: &Solution, b: &Solution) -> Ordering {
         let a_score = self.score(problem, a);

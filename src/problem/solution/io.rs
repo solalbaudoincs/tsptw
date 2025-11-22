@@ -15,9 +15,8 @@ pub fn load_solution(path: &str) -> Result<(Solution, u32), std::io::Error> {
     let sol_list: Vec<u32> = sol_list_line
         .split_whitespace()
         .filter_map(|s| s.parse().ok())
-        .map(| n: u32| n-1 ) 
+        .map(|n: u32| n - 1)
         .collect();
-
 
     let mut sol_val_line = String::new();
     reader.read_line(&mut sol_val_line)?;
@@ -30,19 +29,17 @@ pub fn load_solution(path: &str) -> Result<(Solution, u32), std::io::Error> {
     Ok((sol_list, sol_val))
 }
 
-pub fn print_solution(sol : &Solution, instance: &Instance) {
+pub fn print_solution(sol: &Solution, instance: &Instance) {
     let sol_line = sol
         .iter()
-        .map(|n| (n + 1).to_string()) 
+        .map(|n| (n + 1).to_string())
         .collect::<Vec<_>>()
         .join(" ");
     println!("{}", sol_line);
-    let (dist, viol) = crate::problem::evaluation::utils::run_solution(
-        instance,
-        sol,
-    );
+    let (dist, viol) = crate::problem::evaluation::utils::run_solution(instance, sol);
     println!(
-        "Solution performance: total_distance={}, total_violation={}", dist, viol
+        "Solution performance: total_distance={}, total_violation={}",
+        dist, viol
     );
 }
 

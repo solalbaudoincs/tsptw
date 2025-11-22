@@ -1,27 +1,22 @@
-use rand::Rng;
-
-use crate::problem::{Instance, Population, Solution, Evaluation};
-use crate::problem::evaluation::{Fitness, Fitnesses};
-use crate::neighbourhood::{Swap, TwoOpt, NeighborFn};
 use super::Metaheuristic;
+use crate::neighbourhood::NeighborFn;
+use crate::problem::evaluation::{Fitness, Fitnesses};
+use crate::problem::{Evaluation, Instance, Population, Solution};
 
 pub struct HillClimbing {
     nb_neighboors: usize,
-    two_opt_rate: f64,
 }
 
-impl  HillClimbing {
+impl HillClimbing {
     fn single_step<E: Evaluation, N: NeighborFn>(
         &self,
         solution: &mut Solution,
         fitness: &mut Fitness,
         instance: &Instance,
         neighbourhood: &N,
-        evaluation: &E
+        evaluation: &E,
     ) -> () {
-
         for _ in 0..self.nb_neighboors {
-
             let neighbor = neighbourhood.get_neighbor(&solution);
             let neighbor_fitness = evaluation.score(&instance, &neighbor);
             if neighbor_fitness < *fitness {
@@ -47,7 +42,7 @@ impl Metaheuristic for HillClimbing {
                 &mut fitness[i],
                 instance,
                 neighbourhood,
-                evaluation
+                evaluation,
             );
         }
     }

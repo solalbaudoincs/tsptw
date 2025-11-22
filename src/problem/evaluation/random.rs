@@ -1,5 +1,5 @@
-use std::cmp::Ordering;
 use rand::Rng;
+use std::cmp::Ordering;
 
 use super::Evaluation;
 use crate::problem::{instance::Instance, solution::Solution};

@@ -13,7 +13,9 @@ fn calculate_distance_matrix(graph: &Vec<Node>) -> Vec<Vec<f64>> {
         for j in 0..graph.len() {
             let node1 = &graph[i];
             let node2 = &graph[j];
-            let dist = ((node1.x - node2.x).powi(2) + (node1.y - node2.y).powi(2)).sqrt().floor();
+            let dist = ((node1.x - node2.x).powi(2) + (node1.y - node2.y).powi(2))
+                .sqrt()
+                .floor();
             distance_matrix[i][j] = dist;
         }
     }
@@ -39,7 +41,9 @@ pub fn load_instance(path: &str) -> Instance {
     for line in reader.lines() {
         let l = line.unwrap();
         let vals: Vec<&str> = l.split_whitespace().filter(|s| !s.is_empty()).collect();
-        if vals.is_empty() || (!vals[0].chars().all(char::is_numeric) || vals[0].parse::<u32>().unwrap() >= 999) {
+        if vals.is_empty()
+            || (!vals[0].chars().all(char::is_numeric) || vals[0].parse::<u32>().unwrap() >= 999)
+        {
             continue;
         }
         let idx: u32 = vals[0].parse().unwrap();
