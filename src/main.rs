@@ -2,10 +2,11 @@ mod algorithms;
 mod neighbourhood;
 mod problem;
 mod runner;
+mod shared_types;
 
-use std::f32::consts::E;
+use std::f64::consts::E;
 
-use algorithms::{HillClimbing, SimulatedAnnealing};
+use algorithms::{HillClimbing};
 use neighbourhood::{TwoOpt, Swap};
 use problem::{
     evaluation::{Lexicographic},
@@ -40,33 +41,33 @@ fn main() {
         max_iterations: 10000,
     };
 
-    let mut sa_population = build_initial_population(&instance);
-    let neighbourhood = TwoOpt;
-    let sa_init_temp = SimulatedAnnealing::estimate_initial_temperature(
-        &instance,
-        &sa_population[0],
-        &neighbourhood,
-        10000,
-        0.01,
-        &evaluation,
-    );
-    println!("Estimated SA temperature: {}", sa_init_temp);
-    let sa_min_temp = sa_init_temp * 0.0005;
-    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.99, sa_min_temp);
-    let sa_best = run(
-        &instance,
-        &mut sa_population,
-        &mut sa_algorithm,
-        &neighbourhood,
-        &evaluation,
-        &config,
-    );
-    report_result("Simulated Annealing", &instance, &sa_population, sa_best);
+    // let mut sa_population = build_initial_population(&instance);
+    // let neighbourhood = TwoOpt;
+    // let sa_init_temp = SimulatedAnnealing::estimate_initial_temperature(
+    //     &instance,
+    //     &sa_population[0],
+    //     &neighbourhood,
+    //     10000,
+    //     0.01,
+    //     &evaluation,
+    // );
+    // println!("Estimated SA temperature: {}", sa_init_temp);
+    // let sa_min_temp = sa_init_temp * 0.0005;
+    // let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.99, sa_min_temp);
+    // let sa_best = run(
+    //     &instance,
+    //     &mut sa_population,
+    //     &mut sa_algorithm,
+    //     &neighbourhood,
+    //     &evaluation,
+    //     &config,
+    // );
+    // report_result("Simulated Annealing", &instance, &sa_population, sa_best);
 
     let example_solution = problem::solution::io::load_solution(EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB-1]);
     match example_solution {
         Ok(sol) => {
-            let (dist, viol) = run_solution(&instance, &sol);
+            let (dist, viol) = run_solution(&instance, &(sol.0));
             println!("Example solution performance: total_distance={}, total_violation={}", dist, viol);
         }
         Err(e) => println!("Failed to load example solution: {}", e),
@@ -74,41 +75,14 @@ fn main() {
 }
 
 fn build_initial_population(instance: &Instance) -> Population {
-    let route: Vec<u32> = instance.graph.keys().copied().collect();
-    let mut greedy_route: Vec<u32> = Vec::new();
-    //first search for admissible time window
-    for &node_id in &route {
-        let node = &instance.graph[&node_id];
-        if node.wstart == 0.0 {
-            greedy_route.push(node_id);
-            break;
-        }
-    }
-    //then greedily add nodes with the earliest time window start
-    while greedy_route.len() < route.len() {
-        let mut next_node_id: Option<u32> = None;
-        let mut earliest_wstart = f64::INFINITY;
-        for &node_id in &route {
-            if greedy_route.contains(&node_id) {
-                continue;
-            }
-            let node = &instance.graph[&node_id];
-            if node.wstart < earliest_wstart {
-                earliest_wstart = node.wstart;
-                next_node_id = Some(node_id);
-            }
-        }
-        if let Some(nid) = next_node_id {
-            greedy_route.push(nid);
-        } else {
-            break;
-        }
-    }
-
-    vec![Solution {
-        sol_list: route,
-        sol_val: None,
-    }]
+    let route: Vec<u32> = instance
+        .graph
+        .iter()
+        .enumerate()
+        .skip(1) // skip depot
+        .map(|(idx, _)| idx as u32)
+        .collect();
+    vec![route]
     
 }
 
@@ -124,8 +98,8 @@ fn report_result(
             println!(
                 "{} finished. Best solution visits {} nodes. Full solution {}",
                 name,
-                best.sol_list.len(),
-                best.sol_list.iter()
+                best.len(),
+                best.iter()
                     .map(|n| n.to_string())
                     .collect::<Vec<String>>()
                     .join(" -> ")

@@ -8,6 +8,7 @@ pub fn run_solution(instance: &Instance, solution: &Solution) -> (f64, f64) {
     let mut total_violation = 0.0;
     let mut total_time = 0.0;
 
+    println!("Evaluating solution: {}", solution.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(" -> "));
     let mut visit_edge = |from: usize, to: usize| {
         let travel_time = instance.distance_matrix[from][to as usize];
         total_distance += travel_time;
@@ -30,12 +31,12 @@ pub fn run_solution(instance: &Instance, solution: &Solution) -> (f64, f64) {
         // println!("Travel from {} to {}: distance {}, total_distance {}", from, to, travel_time, total_distance);
     };
 
-    if !solution.sol_list.is_empty() {
-        for window in solution.sol_list.windows(2) {
+    if !solution.is_empty() {
+        for window in solution.windows(2) {
             visit_edge(window[0] as usize, window[1] as usize);
         }
-        let last  = *solution.sol_list.last().unwrap();
-        let first = solution.sol_list[0];
+        let last  = *solution.last().unwrap();
+        let first = solution[0];
         visit_edge(last as usize, first as usize);
     }
 

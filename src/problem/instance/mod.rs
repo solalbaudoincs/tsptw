@@ -1,6 +1,4 @@
 pub mod io;
-
-
 #[derive(Debug)]
 pub struct Node {
     pub x: f64,

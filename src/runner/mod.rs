@@ -1,9 +1,9 @@
 use std::cmp::Ordering;
 
 use crate::algorithms::Metaheuristic;
-use crate::neighbourhood::NeighbourhoodGenerator;
+use crate::neighbourhood::NeighborFn;
 use crate::problem::{
-    evaluation::Evaluation,
+    evaluation::{Evaluation, Fitnesses},
     instance::Instance,
     solution::{Population, Solution},
 };
@@ -12,37 +12,38 @@ pub struct RunConfig {
     pub max_iterations: u32,
 }
 
-pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighbourhoodGenerator>(
+pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighborFn>(
     instance: &Instance,
     population: &mut Population,
+    fitnesses : &mut Fitnesses,
     algorithm: &mut Algo,
     neighbourhood: &N,
     evaluation: &Eval,
     config: &RunConfig,
 ) -> Option<usize> {
-    let mut best = best_solution_index(population, instance, evaluation)?;
-
+    
     for step in 0..config.max_iterations {
         if step % (config.max_iterations / 10) == 0 {
+            let best = best_solution_index(population, instance, evaluation)?;
             let (dist, viol) = crate::problem::evaluation::utils::run_solution(
                 instance,
                 &population[best],
             );
             println!(
                 "Iteration {}: Best solution: {}, distance: {}, violation: {}",
-                step, population[best].sol_list.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(" -> "), dist, viol
+                step, population[best].iter().map(|n| n.to_string()).collect::<Vec<String>>().join(" -> "), dist, viol
             );
         }
-        algorithm.step(population, best, instance, neighbourhood, evaluation);
-        best = best_solution_index(population, instance, evaluation)?;
+        algorithm.step(population, fitnesses, neighbourhood, instance, evaluation);
     }
+    let best = best_solution_index(population, instance, evaluation)?;
     let (dist, viol) = crate::problem::evaluation::utils::run_solution(
                 instance,
                 &population[best],
             );
             println!(
                 "Iteration {}: Best solution: {}, distance: {}, violation: {}",
-                config.max_iterations, population[best].sol_list.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(" -> "), dist, viol
+                config.max_iterations, population[best].iter().map(|n| n.to_string()).collect::<Vec<String>>().join(" -> "), dist, viol
             );
 
     Some(best)
