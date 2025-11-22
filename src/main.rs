@@ -1,10 +1,10 @@
 use std::f64::consts::E;
 
 use mh_tsptw::algorithms::SimulatedAnnealing;
-use mh_tsptw::neighbourhood::{Swap, TwoOpt};
-use mh_tsptw::problem::Evaluation;
+use mh_tsptw::neighbourhood::{Swap, TwoOpt, NeighborFnMixer};
 use mh_tsptw::problem::{
-    evaluation::Weighted,
+    Evaluation,
+    evaluation::{Weighted},
     instance::{Instance, io::load_instance},
     solution::{Population, io::load_solution},
 };
@@ -23,6 +23,12 @@ fn main() {
     let evaluation = Weighted {
         violation_coefficient: 1000000.0,
     };
+    let neighbourhood = NeighborFnMixer::new(vec![
+        Box::new(Swap {}),
+        Box::new(TwoOpt {}),
+    ], vec![0.5, 0.5]);
+
+
     let config = RunConfig {
         max_iterations: 100000,
     };
@@ -33,7 +39,6 @@ fn main() {
         .map(|sol| evaluation.score(&instance, sol))
         .collect();
 
-    let neighbourhood = TwoOpt;
     let sa_init_temp = 500.0;
     println!("Estimated SA temperature: {}", sa_init_temp);
     let sa_min_temp = sa_init_temp * 0.0005;

@@ -5,6 +5,7 @@ mod utils;
 
 pub use swap::Swap;
 pub use twoopt::TwoOpt;
+pub use utils::NeighborFnMixer;
 
 pub trait NeighborFn {
     fn get_neighbor(&self, solution: &Solution) -> Solution;
