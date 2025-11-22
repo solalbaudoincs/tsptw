@@ -1,5 +1,5 @@
 use super::Solution;
-use crate::shared_types::Instance;
+use crate::problem::Instance;
 
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};

@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::shared_types::{Solution, Instance, View, Node, Fitness, Population, Fitnesses};
+use crate::problem::{Solution, Instance, Population, Evaluation};
+use crate::problem::instance::Node;
+use crate::problem::evaluation::{Fitness, Fitnesses};
+use crate::utils::general::View;
 use crate::utils;
-use crate::problem::evaluation::Evaluation;
 
 use super::Metaheuristic;
 

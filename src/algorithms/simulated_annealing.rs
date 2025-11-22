@@ -1,9 +1,6 @@
-use crate::shared_types::{Fitness, Instance, Population, Solution, Fitnesses};
-
+use crate::problem::{Instance, Population, Solution};
+use crate::problem::evaluation::{Fitness, Fitnesses, Evaluation};
 use super::Metaheuristic;
-use crate::problem::{
-    evaluation::Evaluation,
-};
 use crate::neighbourhood::{Swap, TwoOpt};
 
 
