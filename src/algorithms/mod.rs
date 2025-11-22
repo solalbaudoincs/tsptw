@@ -1,6 +1,6 @@
-use crate::shared_types::{Instance, Population, Fitnesses};
-use crate::problem::evaluation::Evaluation;
-use crate::shared_types::NeighborFn;
+use crate::problem::{Instance, Population, Evaluation};
+use crate::problem::evaluation::Fitnesses;
+use crate::neighbourhood::NeighborFn;
 
 mod hill_climbing;
 pub use hill_climbing::HillClimbing;

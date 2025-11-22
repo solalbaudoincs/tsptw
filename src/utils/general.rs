@@ -1,5 +1,5 @@
-use crate::shared_types::View;
-
+// Un conteneur pour les pointeurs vers des idx de vecteurs dans les algorithmes
+pub type View = Vec<usize>;
 
 pub fn argsort_f64(v: &Vec<f64>, buffer: &mut View) -> () {
     for i in 0..buffer.len() {

@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
-use crate::shared_types::Solution;
+use crate::problem::Solution;
 
 use super::{Instance, Node};
 

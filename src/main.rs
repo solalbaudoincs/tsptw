@@ -1,23 +1,18 @@
-mod algorithms;
-mod neighbourhood;
-mod problem;
-mod runner;
-mod shared_types;
-
 use std::f64::consts::E;
 
-use algorithms::{HillClimbing};
-use neighbourhood::{TwoOpt, Swap};
-use problem::{
+use mh_tsptw::algorithms::{HillClimbing};
+use mh_tsptw::neighbourhood::{TwoOpt, Swap};
+use mh_tsptw::problem::{
+    self,
     evaluation::{Lexicographic},
     instance::Instance,
     solution::{Population, Solution},
 };
-use runner::{RunConfig, run};
+use mh_tsptw::runner::{RunConfig, run};
 
-use problem::evaluation::utils::run_solution;
+use mh_tsptw::problem::evaluation::utils::run_solution;
 
-use crate::problem::evaluation::Weighted;
+use mh_tsptw::problem::evaluation::Weighted;
 
 
 const CHALLENGE_PATHS: [&str; 3] = [

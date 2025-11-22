@@ -1,8 +1,8 @@
 use rand::Rng;
 
-use crate::shared_types::{Fitness, Instance, Solution, Population, Fitnesses};
+use crate::problem::{Instance, Population, Solution, Evaluation};
+use crate::problem::evaluation::{Fitness, Fitnesses};
 use crate::neighbourhood::{Swap, TwoOpt, NeighborFn};
-use crate::shared_types::Evaluation;
 use super::Metaheuristic;
 
 pub struct HillClimbing {

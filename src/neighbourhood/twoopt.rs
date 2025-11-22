@@ -1,5 +1,5 @@
 use super::NeighborFn;
-use crate::shared_types::Solution;
+use crate::problem::Solution;
 
 use rand::Rng;
 
