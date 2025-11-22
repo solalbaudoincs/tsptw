@@ -10,15 +10,15 @@ use crate::neighbourhood::{Swap, TwoOpt};
 use rand::Rng;
 
 pub struct SimulatedAnnealing {
-    initial_temperature: f32,
-    cooling_rate: f32,
-    stopping_temperature: f32,
+    initial_temperature: f64,
+    cooling_rate: f64,
+    stopping_temperature: f64,
     iters_per_temp: usize,
-    two_opt_rate: f32,
+    two_opt_rate: f64,
 }
 
 impl SimulatedAnnealing {
-    fn acceptance_probability(&self, current_fitness: f32, neighbor_fitness: f32, temperature: f32) -> f32 {
+    fn acceptance_probability(&self, current_fitness: f64, neighbor_fitness: f64, temperature: f64) -> f64 {
         if neighbor_fitness < current_fitness {
             1.0
         } else {

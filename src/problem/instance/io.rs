@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
+use crate::shared_types::Solution;
+
 use super::{Instance, Node};
 
 fn calculate_distance_matrix(graph: &Vec<Node>) -> Vec<Vec<f64>> {

@@ -1,6 +1,7 @@
 use crate::problem::solution::Solution;
 mod swap;
 mod twoopt;
+mod utils;
 
 pub use swap::Swap;
 pub use twoopt::TwoOpt;

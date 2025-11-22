@@ -21,11 +21,11 @@ enum CrossType {
 pub struct GeneticAlgorithm{
 
     // Paramètres de l'algorithme
-    mutation_rate: f32,
-    crossover_rate: f32,
+    mutation_rate: f64,
+    crossover_rate: f64,
     crossover_type: CrossType,
-    elitism_rate: f32,
-    comp_participation: f32,
+    elitism_rate: f64,
+    comp_participation: f64,
     comp_type: CompetitionType,
     
     // Buffers réutilisés, alloués UNE FOIS
@@ -38,11 +38,11 @@ pub struct GeneticAlgorithm{
 
 impl GeneticAlgorithm {
     pub fn new(
-        mutation_rate: f32,
-        crossover_rate: f32,
+        mutation_rate: f64,
+        crossover_rate: f64,
         crossover_type: CrossType,
-        elitism_rate: f32,
-        comp_participation: f32,
+        elitism_rate: f64,
+        comp_participation: f64,
         comp_type: CompetitionType,
         max_population_size: usize,
         solution_size: usize,
@@ -54,8 +54,8 @@ impl GeneticAlgorithm {
             elitism_rate,
             comp_participation,
             comp_type,
-            participants_buf: Vec::with_capacity((comp_participation * max_population_size as f32) as usize),
-            best_idx_buf: Vec::with_capacity((max_population_size as f32) as usize),
+            participants_buf: Vec::with_capacity((comp_participation * max_population_size as f64) as usize),
+            best_idx_buf: Vec::with_capacity((max_population_size as f64) as usize),
             new_population_buf: Vec::with_capacity(max_population_size),
             child1_buf: Vec::with_capacity(solution_size),
             child2_buf: Vec::with_capacity(solution_size),
@@ -84,7 +84,7 @@ impl GeneticAlgorithm {
 impl GeneticAlgorithm {
     fn roulette_selection(fitness: &Vec<Fitness>, participants: &View) -> usize {
         // Roulette wheel selection logic
-        let total_fitness: f32 = participants.iter().map(|&idx| fitness[idx]).sum();
+        let total_fitness: f64 = participants.iter().map(|&idx| fitness[idx]).sum();
         let mut rng = rand::rng();
         let mut pick = rng.random_range(0.0..total_fitness);
         
@@ -102,7 +102,7 @@ impl GeneticAlgorithm {
 
 impl GeneticAlgorithm {
     fn select_best<'a>(best_idx_buffer: &'a mut View, n_solution: usize, fitness: &Vec<Fitness>) -> &'a [usize] {
-        utils::general::argsort_f32(fitness, best_idx_buffer);
+        utils::general::argsort_f64(fitness, best_idx_buffer);
         let pop_size = fitness.len();
         &best_idx_buffer[pop_size - n_solution..]
     }
@@ -112,7 +112,7 @@ impl GeneticAlgorithm {
     fn select_particiants(&mut self, population: &Vec<Solution>) -> () {
         // Logic to select participants for selection round
         let mut rng = rand::rng();
-        let num_participants = (self.comp_participation * population.len() as f32) as usize;
+        let num_participants = (self.comp_participation * population.len() as f64) as usize;
         let mut participants: View = Vec::with_capacity(num_participants);
         
         while participants.len() < num_participants {
@@ -287,7 +287,7 @@ impl Metaheuristic for GeneticAlgorithm {
     ) -> () {
 
         let pop_size = population.len();
-        let elitism_count = (self.elitism_rate * pop_size as f32) as usize;
+        let elitism_count = (self.elitism_rate * pop_size as f64) as usize;
 
         // Sélection des meilleurs individus pour l'élitisme
         let best_idx = Self::select_best(&mut self.best_idx_buf, elitism_count, fitness);
@@ -321,7 +321,7 @@ impl Metaheuristic for GeneticAlgorithm {
 
         population.clone_from(&self.new_population_buf);
         for i in 0..pop_size {
-            fitness[i] = evaluation.score(instance, &population[i]) as f32; // Invalidate fitness
+            fitness[i] = evaluation.score(instance, &population[i]) as f64; // Invalidate fitness
         }
     }
 }
