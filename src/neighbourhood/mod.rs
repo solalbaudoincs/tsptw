@@ -8,5 +8,5 @@ pub use twoopt::TwoOpt;
 pub use utils::NeighborFnMixer;
 
 pub trait NeighborFn {
-    fn get_neighbor(&self, solution: &Solution) -> Solution;
+    fn get_neighbor(&mut self, solution: &Solution) -> Solution;
 }

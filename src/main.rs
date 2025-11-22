@@ -23,9 +23,9 @@ fn main() {
     let evaluation = Weighted {
         violation_coefficient: 1000000.0,
     };
-    let neighbourhood = NeighborFnMixer::new(vec![
-        Box::new(Swap {}),
-        Box::new(TwoOpt {}),
+    let mut neighbourhood = NeighborFnMixer::new(vec![
+        Box::new(Swap::new()),
+        Box::new(TwoOpt::new()),
     ], vec![0.5, 0.5]);
 
 
@@ -49,7 +49,7 @@ fn main() {
         &mut sa_population,
         &mut fitnesss,
         &mut sa_algorithm,
-        &neighbourhood,
+        &mut neighbourhood,
         &evaluation,
         &config,
     );

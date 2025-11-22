@@ -13,7 +13,7 @@ impl HillClimbing {
         solution: &mut Solution,
         fitness: &mut Fitness,
         instance: &Instance,
-        neighbourhood: &N,
+        neighbourhood: &mut N,
         evaluation: &E,
     ) -> () {
         for _ in 0..self.nb_neighboors {
@@ -32,7 +32,7 @@ impl Metaheuristic for HillClimbing {
         &mut self,
         population: &mut Population,
         fitness: &mut Fitnesses,
-        neighbourhood: &N,
+        neighbourhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     ) {
