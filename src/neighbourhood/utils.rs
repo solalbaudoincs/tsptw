@@ -24,5 +24,4 @@ impl NeighborFn for NeighborMixer {
         // Fallback in case of rounding errors
         return self.neighborhood_fns.last().unwrap().get_neighbor(solution);
     }
-    
 }

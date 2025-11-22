@@ -6,7 +6,6 @@ use rand::Rng;
 pub struct TwoOpt;
 
 impl NeighborFn for TwoOpt {
-
     fn get_neighbor(&self, solution: &Solution) -> Solution {
         // Implementation of the 2-opt neighbor generation
 
@@ -18,8 +17,7 @@ impl NeighborFn for TwoOpt {
         if i == len - 1 {
             j = rng.random_range(0..len - 1);
             (i, j) = (j, i);
-        }
-        else {
+        } else {
             j = rng.random_range(i + 1..len);
         }
         let mut new_route: Solution = solution.clone();

@@ -1,69 +1,63 @@
 use std::f64::consts::E;
 
-use mh_tsptw::algorithms::{HillClimbing};
-use mh_tsptw::neighbourhood::{TwoOpt, Swap};
+use mh_tsptw::algorithms::SimulatedAnnealing;
+use mh_tsptw::neighbourhood::{Swap, TwoOpt};
+use mh_tsptw::problem::Evaluation;
 use mh_tsptw::problem::{
-    self,
-    evaluation::{Lexicographic},
-    instance::Instance,
-    solution::{Population, Solution},
+    evaluation::Weighted,
+    instance::{Instance, io::load_instance},
+    solution::{Population, io::load_solution},
 };
 use mh_tsptw::runner::{RunConfig, run};
 
 use mh_tsptw::problem::evaluation::utils::run_solution;
 
-use mh_tsptw::problem::evaluation::Weighted;
+const CHALLENGE_PATHS: [&str; 3] = ["data/inst1", "data/inst2", "data/inst3"];
 
+const EXAMPLE_SOLUTION_PATHS: [&str; 3] = ["data/inst1.sol", "data/inst2.sol", "data/inst3.sol"];
 
-const CHALLENGE_PATHS: [&str; 3] = [
-    "data/inst1",
-    "data/inst2",
-    "data/inst3",
-];
-
-const EXAMPLE_SOLUTION_PATHS: [&str; 3] = [
-    "data/inst1.sol",
-    "data/inst2.sol",
-    "data/inst3.sol",
-];
-
-const CHALLENGE_NB : usize = 1; 
+const CHALLENGE_NB: usize = 1;
 
 fn main() {
-    let instance = problem::instance::io::load_instance(CHALLENGE_PATHS[CHALLENGE_NB-1]);
-    let evaluation = Weighted{violation_coefficient : 100.0};
+    let instance = load_instance(CHALLENGE_PATHS[CHALLENGE_NB - 1]);
+    let evaluation = Weighted {
+        violation_coefficient: 1000000.0,
+    };
     let config = RunConfig {
-        max_iterations: 10000,
+        max_iterations: 100000,
     };
 
-    // let mut sa_population = build_initial_population(&instance);
-    // let neighbourhood = TwoOpt;
-    // let sa_init_temp = SimulatedAnnealing::estimate_initial_temperature(
-    //     &instance,
-    //     &sa_population[0],
-    //     &neighbourhood,
-    //     10000,
-    //     0.01,
-    //     &evaluation,
-    // );
-    // println!("Estimated SA temperature: {}", sa_init_temp);
-    // let sa_min_temp = sa_init_temp * 0.0005;
-    // let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.99, sa_min_temp);
-    // let sa_best = run(
-    //     &instance,
-    //     &mut sa_population,
-    //     &mut sa_algorithm,
-    //     &neighbourhood,
-    //     &evaluation,
-    //     &config,
-    // );
-    // report_result("Simulated Annealing", &instance, &sa_population, sa_best);
+    let mut sa_population = build_initial_population(&instance);
+    let mut fitnesss: Vec<f64> = sa_population
+        .iter()
+        .map(|sol| evaluation.score(&instance, sol))
+        .collect();
 
-    let example_solution = problem::solution::io::load_solution(EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB-1]);
+    let neighbourhood = TwoOpt;
+    let sa_init_temp = 500.0;
+    println!("Estimated SA temperature: {}", sa_init_temp);
+    let sa_min_temp = sa_init_temp * 0.0005;
+    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.95, sa_min_temp);
+
+    let sa_best = run(
+        &instance,
+        &mut sa_population,
+        &mut fitnesss,
+        &mut sa_algorithm,
+        &neighbourhood,
+        &evaluation,
+        &config,
+    );
+    report_result("Simulated Annealing", &instance, &sa_population, sa_best);
+
+    let example_solution = load_solution(EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB - 1]);
     match example_solution {
         Ok(sol) => {
             let (dist, viol) = run_solution(&instance, &(sol.0));
-            println!("Example solution performance: total_distance={}, total_violation={}", dist, viol);
+            println!(
+                "Example solution performance: total_distance={}, total_violation={}",
+                dist, viol
+            );
         }
         Err(e) => println!("Failed to load example solution: {}", e),
     }
@@ -77,8 +71,9 @@ fn build_initial_population(instance: &Instance) -> Population {
         .skip(1) // skip depot
         .map(|(idx, _)| idx as u32)
         .collect();
-    vec![route]
-    
+    let mut greedy_route = route.clone();
+
+    vec![greedy_route]
 }
 
 fn report_result(

@@ -1,12 +1,12 @@
-use crate::problem::{Instance, Population, Evaluation};
-use crate::problem::evaluation::Fitnesses;
 use crate::neighbourhood::NeighborFn;
+use crate::problem::evaluation::Fitnesses;
+use crate::problem::{Evaluation, Instance, Population};
 
 mod hill_climbing;
 pub use hill_climbing::HillClimbing;
 
-// mod simulated_annealing;
-// pub use simulated_annealing::SimulatedAnnealing;
+mod simulated_annealing;
+pub use simulated_annealing::SimulatedAnnealing;
 
 //mod ga;
 

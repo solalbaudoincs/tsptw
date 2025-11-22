@@ -40,10 +40,6 @@ impl Evaluation for Lexicographic {
     }
     fn score(&self, problem: &Instance, solution: &Solution) -> f64 {
         let (distance, violation) = run_solution(problem, solution);
-        if violation > 0.0 {
-            violation
-        } else {
-            distance
-        }
+        if violation > 0.0 { violation } else { distance }
     }
 }
