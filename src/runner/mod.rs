@@ -17,7 +17,7 @@ pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighborFn>(
     population: &mut Population,
     fitnesses: &mut Fitnesses,
     algorithm: &mut Algo,
-    neighbourhood: &N,
+    neighbourhood: &mut N,
     evaluation: &Eval,
     config: &RunConfig,
 ) -> Option<usize> {

@@ -41,7 +41,7 @@ impl SimulatedAnnealing {
         solution: &mut Solution,
         fitness: &mut Fitness,
         instance: &Instance,
-        neighbourhood: &N,
+        neighbourhood: &mut N,
         evaluation: &E,
     ) -> () {
         let neighbor = neighbourhood.get_neighbor(&solution);
@@ -62,7 +62,7 @@ impl Metaheuristic for SimulatedAnnealing {
         &mut self,
         population: &mut Population,
         fitness: &mut Fitnesses,
-        neighbourhood: &N,
+        neighbourhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     ) {

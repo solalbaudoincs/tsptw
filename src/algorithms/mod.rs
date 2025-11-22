@@ -15,7 +15,7 @@ pub trait Metaheuristic {
         &mut self,
         population: &mut Population,
         fitnesses: &mut Fitnesses,
-        neighbourhood: &N,
+        neighbourhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     );

@@ -3,10 +3,19 @@ use crate::problem::Solution;
 
 use rand::Rng;
 
-pub struct TwoOpt;
+pub struct TwoOpt {
+    rng: rand::rngs::ThreadRng,
+}
+impl TwoOpt {
+    pub fn new() -> Self {
+        TwoOpt {
+            rng: rand::rngs::ThreadRng::default(),
+        }
+    }
+}
 
 impl NeighborFn for TwoOpt {
-    fn get_neighbor(&self, solution: &Solution) -> Solution {
+    fn get_neighbor(&mut self, solution: &Solution) -> Solution {
         // Implementation of the 2-opt neighbor generation
 
         let mut rng = rand::rng();

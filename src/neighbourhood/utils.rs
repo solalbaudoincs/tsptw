@@ -6,6 +6,7 @@ use rand::Rng;
 pub struct NeighborFnMixer {
     neighborhood_fns: Vec<Box<dyn NeighborFn>>,
     weights: Vec<f64>,
+    rng: rand::rngs::ThreadRng,
 }
 
 impl NeighborFnMixer {
@@ -22,14 +23,14 @@ impl NeighborFnMixer {
         NeighborFnMixer {
             neighborhood_fns,
             weights: normalized_weights,
+            rng: rand::rngs::ThreadRng::default(),
         }
     }
 }
 
 impl NeighborFn for NeighborFnMixer {
-    fn get_neighbor(&self, solution: &Solution) -> Solution {
-        let mut rng = rand::rng();
-        let r: f64 = rng.random_range(0.0..1.0);
+    fn get_neighbor(&mut self, solution: &Solution) -> Solution {
+        let r: f64 = self.rng.random_range(0.0..1.0);
         let mut cumulative_weight = 0.0;
 
         for (i, weight) in self.weights.iter().enumerate() {
@@ -38,8 +39,8 @@ impl NeighborFn for NeighborFnMixer {
                 return self.neighborhood_fns[i].get_neighbor(solution);
             }
         }
-
         // Fallback in case of rounding errors
-        return self.neighborhood_fns.last().unwrap().get_neighbor(solution);
+        let n = self.neighborhood_fns.len();
+       return self.neighborhood_fns[n - 1].get_neighbor(solution);
     }
 }
