@@ -4,9 +4,9 @@ use std::io::{BufRead, BufReader};
 
 use super::{Instance, Node};
 
-fn calculate_distance_matrix(graph: &Vec<Node>) -> Vec<Vec<f64>> {
+fn calculate_distance_matrix(graph: &Vec<Node>) -> Vec<Vec<f32>> {
     let node_number = graph.len();
-    let mut distance_matrix = vec![vec![0.0; node_number]; node_number];
+    let mut distance_matrix = vec![vec![0.0f32; node_number]; node_number];
 
     for i in 0..graph.len() {
         for j in 0..graph.len() {

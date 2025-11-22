@@ -6,11 +6,11 @@ use crate::problem::{instance::Instance, solution::Solution};
 use super::utils::run_solution;
 
 pub struct Weighted {
-    pub violation_coefficient: f64,
+    pub violation_coefficient: f32,
 }
 
 impl Evaluation for Weighted {
-    fn score(&self, problem: &Instance, solution: &Solution) -> f64 {
+    fn score(&self, problem: &Instance, solution: &Solution) -> f32 {
         let (distance, violation) = run_solution(problem, solution);
         self.violation_coefficient * violation + distance
     }

@@ -38,8 +38,8 @@ impl Evaluation for Lexicographic {
             Ordering::Equal
         }
     }
-    fn score(&self, problem: &Instance, solution: &Solution) -> f64 {
+    fn score(&self, problem: &Instance, solution: &Solution) -> f32 {
         let (distance, violation) = run_solution(problem, solution);
-        if violation > 0.0 { violation } else { distance }
+        if violation > 0.0f32 { violation } else { distance }
     }
 }
