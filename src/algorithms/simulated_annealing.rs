@@ -1,5 +1,5 @@
 use super::Metaheuristic;
-use crate::neighbourhood::{self, NeighborFn, Swap, TwoOpt};
+use crate::neighbourhood::NeighborFn;
 use crate::problem::evaluation::{Evaluation, Fitness, Fitnesses};
 use crate::problem::{Instance, Population, Solution};
 

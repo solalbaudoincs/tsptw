@@ -1,7 +1,6 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader};
 
-use crate::problem::Solution;
 
 use super::{Instance, Node};
 
@@ -46,7 +45,6 @@ pub fn load_instance(path: &str) -> Instance {
         {
             continue;
         }
-        let idx: u32 = vals[0].parse().unwrap();
         let node = Node {
             x: vals[1].parse().unwrap(),
             y: vals[2].parse().unwrap(),
