@@ -34,7 +34,7 @@ impl SimulatedAnnealing {
             rng: rand::rngs::ThreadRng::default(),
         }
     }
-    fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
+    pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
         instance: &Instance,
         evaluation: &E,
         neighbourhood: &mut N,
