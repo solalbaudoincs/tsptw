@@ -6,27 +6,27 @@ use crate::problem::{Instance, Population, Solution};
 use rand::Rng;
 
 pub struct SimulatedAnnealing {
-    initial_temperature: f64,
-    cooling_rate: f64,
-    stopping_temperature: f64,
+    initial_temperature: f32,
+    cooling_rate: f32,
+    stopping_temperature: f32,
     rng: rand::rngs::ThreadRng,
 }
 
 impl SimulatedAnnealing {
     fn acceptance_probability(
         &self,
-        current_fitness: f64,
-        neighbor_fitness: f64,
-        temperature: f64,
-    ) -> f64 {
+        current_fitness: f32,
+        neighbor_fitness: f32,
+        temperature: f32,
+    ) -> f32 {
         if neighbor_fitness < current_fitness {
             1.0
         } else {
             ((current_fitness - neighbor_fitness) / temperature).exp()
         }
     }
-    pub fn new(initial_temperature: f64, cooling_rate: f64, stopping_temperature: f64) -> Self {
-        SimulatedAnnealing {
+    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32) -> Self {
+            SimulatedAnnealing {
             initial_temperature,
             cooling_rate,
             stopping_temperature,
@@ -46,9 +46,8 @@ impl SimulatedAnnealing {
     ) -> () {
         let neighbor = neighbourhood.get_neighbor(&solution);
         let neighbor_fitness = evaluation.score(instance, &neighbor);
-        let rand = self.rng.random_range(0.0..1.0);
-        let p: f64 =
-            self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
+            let rand = self.rng.random_range(0.0f32..1.0f32);
+            let p: f32 = self.acceptance_probability(*fitness , neighbor_fitness, self.initial_temperature);
         if rand < p {
             *solution = neighbor;
             *fitness = neighbor_fitness;

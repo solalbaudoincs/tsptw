@@ -1,13 +1,13 @@
 pub mod io;
 #[derive(Debug)]
 pub struct Node {
-    pub x: f64,
-    pub y: f64,
-    pub wstart: f64,
-    pub wend: f64,
+    pub x: f32,
+    pub y: f32,
+    pub wstart: f32,
+    pub wend: f32,
 }
 
 pub struct Instance {
     pub graph: Vec<Node>,
-    pub distance_matrix: Vec<Vec<f64>>,
+    pub distance_matrix: Vec<Vec<f32>>,
 }

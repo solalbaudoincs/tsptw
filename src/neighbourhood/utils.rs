@@ -5,17 +5,17 @@ use rand::Rng;
 
 pub struct NeighborFnMixer {
     neighborhood_fns: Vec<Box<dyn NeighborFn>>,
-    weights: Vec<f64>,
+    weights: Vec<f32>,
     rng: rand::rngs::ThreadRng,
 }
 
 impl NeighborFnMixer {
     pub fn new(
         neighborhood_fns: Vec<Box<dyn NeighborFn>>,
-        weights: Vec<f64>,
+        weights: Vec<f32>,
     ) -> Self {
-        let weight_sum: f64 = weights.iter().sum();
-        let normalized_weights: Vec<f64> = weights
+        let weight_sum: f32 = weights.iter().sum();
+        let normalized_weights: Vec<f32> = weights
             .iter()
             .map(|w| *w / weight_sum)
             .collect();
@@ -30,8 +30,8 @@ impl NeighborFnMixer {
 
 impl NeighborFn for NeighborFnMixer {
     fn get_neighbor(&mut self, solution: &Solution) -> Solution {
-        let r: f64 = self.rng.random_range(0.0..1.0);
-        let mut cumulative_weight = 0.0;
+        let r: f32 = self.rng.random_range(0.0f32..1.0f32);
+        let mut cumulative_weight: f32 = 0.0f32;
 
         for (i, weight) in self.weights.iter().enumerate() {
             cumulative_weight += *weight;

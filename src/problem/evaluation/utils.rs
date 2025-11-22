@@ -1,10 +1,10 @@
 use crate::problem::instance::Instance;
 use crate::problem::solution::Solution;
 
-pub fn run_solution(instance: &Instance, solution: &Solution) -> (f64, f64) {
-    let mut total_distance = 0.0;
-    let mut total_violation = 0.0;
-    let mut total_time = 0.0;
+pub fn run_solution(instance: &Instance, solution: &Solution) -> (f32, f32) {
+    let mut total_distance: f32 = 0.0;
+    let mut total_violation: f32 = 0.0;
+    let mut total_time: f32 = 0.0;
 
     let mut visit_edge = |from: usize, to: usize| {
         let travel_time = instance.distance_matrix[from][to as usize];

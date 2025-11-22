@@ -11,7 +11,7 @@ pub use weighted::Weighted;
 use super::instance::Instance;
 use super::solution::Solution;
 
-pub type Fitness = f64;
+pub type Fitness = f32;
 pub type Fitnesses = Vec<Fitness>;
 
 pub trait Evaluation {

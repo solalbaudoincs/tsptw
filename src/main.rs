@@ -20,7 +20,7 @@ const CHALLENGE_NB: usize = 1;
 fn main() {
     let instance = load_instance(CHALLENGE_PATHS[CHALLENGE_NB - 1]);
     let evaluation = Weighted {
-        violation_coefficient: 1000000.0,
+        violation_coefficient: 10000000.0f32,
     };
     let mut neighbourhood = NeighborFnMixer::new(vec![
         Box::new(Swap::new()),
@@ -33,15 +33,15 @@ fn main() {
     };
 
     let mut sa_population = build_initial_population(&instance);
-    let mut fitnesss: Vec<f64> = sa_population
+    let mut fitnesss: Vec<f32> = sa_population
         .iter()
         .map(|sol| evaluation.score(&instance, sol))
         .collect();
 
-    let sa_init_temp = 500.0;
+    let sa_init_temp = 500.0f32;
     println!("Estimated SA temperature: {}", sa_init_temp);
-    let sa_min_temp = sa_init_temp * 0.0005;
-    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.95, sa_min_temp);
+    let sa_min_temp = sa_init_temp * 0.0005f32;
+    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.95f32, sa_min_temp);
 
     let sa_best = run(
         &instance,
