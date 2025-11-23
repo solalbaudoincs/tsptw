@@ -1,4 +1,5 @@
 
+use clap::Parser;
 use mh_tsptw::algorithms::SimulatedAnnealing;
 use mh_tsptw::neighbourhood::{Swap, TwoOpt, NeighborFnMixer};
 use mh_tsptw::problem::{
@@ -17,7 +18,27 @@ const EXAMPLE_SOLUTION_PATHS: [&str; 3] = ["data/inst1.sol", "data/inst2.sol", "
 
 const CHALLENGE_NB: usize = 1;
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Run in GUI mode
+    #[arg(long, default_value_t = false)]
+    gui: bool,
+}
+
 fn main() {
+    let args = Args::parse();
+
+    if args.gui {
+        let native_options = eframe::NativeOptions::default();
+        eframe::run_native(
+            "Metaheuristics TSPTW",
+            native_options,
+            Box::new(|cc| Ok(Box::new(mh_tsptw::gui::app::TspApp::new(cc)))),
+        ).unwrap();
+        return;
+    }
+
     let instance = load_instance(CHALLENGE_PATHS[CHALLENGE_NB - 1]);
     let evaluation = Weighted {
         violation_coefficient: 10000000.0f32,
@@ -29,7 +50,7 @@ fn main() {
 
 
     let config = RunConfig {
-        max_iterations: 100000,
+        max_iterations: 1000000,
     };
 
     let mut sa_population = build_initial_population(&instance);
@@ -38,10 +59,18 @@ fn main() {
         .map(|sol| evaluation.score(&instance, sol))
         .collect();
 
-    let sa_init_temp = 500.0f32;
+    let sa_init_temp = SimulatedAnnealing::estimate_initial_temperature(
+        &instance,
+        &evaluation,
+        &mut neighbourhood,
+        10000,
+        0.9f32,
+    );
+
+
     println!("Estimated SA temperature: {}", sa_init_temp);
     let sa_min_temp = sa_init_temp * 0.0005f32;
-    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.95f32, sa_min_temp);
+    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.995f32, sa_min_temp);
 
     let sa_best = run(
         &instance,
