@@ -4,3 +4,4 @@ pub mod problem;
 pub mod runner;
 pub mod utils;
 pub mod initializer;
+pub mod gui;
