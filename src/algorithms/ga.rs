@@ -56,7 +56,7 @@ impl GeneticAlgorithm {
             elitism_rate,
             comp_participation,
             comp_type,
-            participants_buf: Vec::with_capacity((comp_participation * max_population_size) as usize),
+            participants_buf: Vec::with_capacity((comp_participation * (max_population_size as f32)) as usize),
             best_idx_buf: Vec::with_capacity(max_population_size),
             new_population_buf: Vec::with_capacity(max_population_size),
             child1_buf: Vec::with_capacity(solution_size),
@@ -114,7 +114,7 @@ impl GeneticAlgorithm {
     fn select_particiants(&mut self, population: &Vec<Solution>) -> () {
         // Logic to select participants for selection round
         let mut rng = rand::rng();
-        let num_participants = (self.comp_participation * population.len()) as usize;
+        let num_participants = (self.comp_participation * (population.len() as f32)) as usize;
         let mut participants: View = Vec::with_capacity(num_participants);
         
         while participants.len() < num_participants {

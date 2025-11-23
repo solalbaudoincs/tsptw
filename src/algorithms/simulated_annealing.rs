@@ -3,14 +3,16 @@ use crate::neighbourhood::NeighborFn;
 use crate::problem::evaluation::{Evaluation, Fitness, Fitnesses};
 use crate::problem::{Instance, Population, Solution};
 use crate::initializer::{RandomInitializer, Initializer};
+use std::collections::HashMap;
 
 use rand::Rng;
+use rand::SeedableRng;
 
 pub struct SimulatedAnnealing {
     initial_temperature: f32,
     cooling_rate: f32,
     stopping_temperature: f32,
-    rng: rand::rngs::ThreadRng,
+    rng: rand::rngs::StdRng,
 }
 
 impl SimulatedAnnealing {
@@ -31,7 +33,7 @@ impl SimulatedAnnealing {
             initial_temperature,
             cooling_rate,
             stopping_temperature,
-            rng: rand::rngs::ThreadRng::default(),
+            rng: rand::rngs::StdRng::from_os_rng(),
         }
     }
     pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
@@ -41,7 +43,7 @@ impl SimulatedAnnealing {
         sample_size: usize,
         desired_acceptance_rate: f32,
     ) -> f32 {
-        let mut energy_increases = Vec::new();
+        let mut deltas = Vec::new();
         // Start from a random initial solution
         let mut rd_initializer = RandomInitializer{};
         let mut current_solution = rd_initializer.initialize(instance);
@@ -52,22 +54,17 @@ impl SimulatedAnnealing {
             let neighbor_fitness = evaluation.score(instance, &neighbor);
 
             let delta_energy = neighbor_fitness - current_fitness;
-            if delta_energy > 0.0 {
-                energy_increases.push(delta_energy);
-            }
+            deltas.push(delta_energy);
 
             current_solution = neighbor;
             current_fitness = neighbor_fitness;
         }
         // Calculate average increase in energy from sampled uphill moves
-        let average_delta_energy = if energy_increases.is_empty() {
-            // If no uphill moves, fallback to a small positive number to avoid division by zero
-            1e-6
-        } else {
-            energy_increases.iter().sum::<f32>() / energy_increases.len() as f32
-        };
+        let average_delta = deltas.iter().sum::<f32>() / deltas.len() as f32;
+        let delta_variance = deltas.iter().map(|d| (d - average_delta).powi(2)).sum::<f32>() / deltas.len() as f32;
+
         // Compute initial temperature for the desired acceptance probability
-        -average_delta_energy / desired_acceptance_rate.ln()
+        -(3.0 * delta_variance.sqrt()) / desired_acceptance_rate.ln()
     }
 }
 
@@ -110,5 +107,15 @@ impl Metaheuristic for SimulatedAnnealing {
                 evaluation,
             );
         }
+    }
+
+    fn get_metrics(&self) -> HashMap<String, f32> {
+        let mut metrics = HashMap::new();
+        metrics.insert("temperature".to_string(), self.initial_temperature);
+        metrics
+    }
+
+    fn get_metric_names(&self) -> Vec<String> {
+        vec!["temperature".to_string()]
     }
 }

@@ -1,3 +1,4 @@
+use core::num;
 use std::cmp::Ordering;
 
 use crate::algorithms::Metaheuristic;
@@ -68,7 +69,7 @@ fn best_solution_index<T: Evaluation>(
 
     let mut best = 0;
     for idx in 1..population.len() {
-        if evaluation.compare(instance, &population[idx], &population[best]) == Ordering::Less {
+        if evaluation.compare(instance, &population[idx], &population[best]) == Ordering::Greater {
             best = idx;
         }
     }
