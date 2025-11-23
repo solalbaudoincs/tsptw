@@ -2,15 +2,16 @@ use super::NeighborFn;
 use crate::problem::Solution;
 
 use rand::Rng;
+use rand::SeedableRng;
 
 pub struct Swap {
-    rng: rand::rngs::ThreadRng,
+    rng: rand::rngs::StdRng,
 }
 
 impl Swap {
     pub fn new() -> Self {
         Swap {
-            rng: rand::rngs::ThreadRng::default(),
+            rng: rand::rngs::StdRng::from_os_rng(),
         }
     }
 }

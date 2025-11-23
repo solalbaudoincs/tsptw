@@ -1,5 +1,5 @@
 pub mod io;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     pub x: f32,
     pub y: f32,
@@ -7,6 +7,7 @@ pub struct Node {
     pub wend: f32,
 }
 
+#[derive(Clone)]
 pub struct Instance {
     pub graph: Vec<Node>,
     pub distance_matrix: Vec<Vec<f32>>,
