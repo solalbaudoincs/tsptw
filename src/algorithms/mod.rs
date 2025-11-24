@@ -1,6 +1,7 @@
-use crate::neighbourhood::NeighborFn;
-use crate::problem::evaluation::Fitnesses;
-use crate::problem::{Evaluation, Instance, Population};
+use crate::neighborhood::NeighborFn;
+use crate::shared::{Instance, Solution, Fitness};
+use crate::eval::Evaluation;
+
 use std::collections::HashMap;
 
 mod hill_climbing;
@@ -12,14 +13,14 @@ pub use simulated_annealing::SimulatedAnnealing;
 // mod ga;
 // pub use ga::GeneticAlgorithm;   
 
-//mod ga;
+// mod ga;
 
 pub trait Metaheuristic {
     fn step<Eval: Evaluation, N: NeighborFn>(
         &mut self,
-        population: &mut Population,
-        fitnesses: &mut Fitnesses,
-        neighbourhood: &mut N,
+        population: &mut [Solution],
+        fitnesses: &mut [Fitness],
+        neighborhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     );

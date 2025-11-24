@@ -1,5 +1,4 @@
-use crate::problem::{Instance, Solution};
-
+use crate::shared::{Instance, Solution};
 
 pub trait Initializer {
     fn initialize(&mut self, problem: &Instance) -> Solution;

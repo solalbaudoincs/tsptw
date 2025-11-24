@@ -1,7 +1,8 @@
 use eframe::egui;
 use egui_plot::{Bar, BarChart, Legend, Orientation, Plot, PlotPoint, PlotPoints, Points, Text};
 use crate::gui::state::RunState;
-use crate::problem::Instance;
+
+use crate::shared::Instance;
 
 pub fn show(ui: &mut egui::Ui, run_state: &RunState, instance: &Option<Instance>) {
     ui.push_id("gantt_plot", |ui| {

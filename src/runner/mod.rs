@@ -1,32 +1,30 @@
-use core::num;
 use std::cmp::Ordering;
 
 use crate::algorithms::Metaheuristic;
-use crate::neighbourhood::NeighborFn;
-use crate::problem::{
-    evaluation::{Evaluation, Fitnesses},
-    instance::Instance,
-    solution::{Population, Solution},
-};
+use crate::neighborhood::NeighborFn;
+use crate::eval::{Evaluation, utils};
+use crate::shared::{Instance, Solution, Fitness};
 
 pub struct RunConfig {
     pub max_iterations: u32,
 }
 
 pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighborFn>(
+
     instance: &Instance,
-    population: &mut Population,
-    fitnesses: &mut Fitnesses,
+    population: &mut Vec<Solution>,
+    fitnesses: &mut Vec<Fitness>,
     algorithm: &mut Algo,
-    neighbourhood: &mut N,
+    neighborhood: &mut N,
     evaluation: &Eval,
     config: &RunConfig,
+
 ) -> Option<usize> {
     for step in 0..config.max_iterations {
         if step % (config.max_iterations / 10) == 0 {
             let best = best_solution_index(population, instance, evaluation)?;
-            let (dist, viol) =
-                crate::problem::evaluation::utils::run_solution(instance, &population[best]);
+            let eval = utils::run_solution(instance, &population[best]);
+            let (dist, viol) = (eval.total_distance, eval.violation_time);
             println!(
                 "Iteration {}: Best solution: {}, distance: {}, violation: {}",
                 step,
@@ -39,10 +37,11 @@ pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighborFn>(
                 viol
             );
         }
-        algorithm.step(population, fitnesses, neighbourhood, instance, evaluation);
+        algorithm.step(population, fitnesses, neighborhood, instance, evaluation);
     }
     let best = best_solution_index(population, instance, evaluation)?;
-    let (dist, viol) = crate::problem::evaluation::utils::run_solution(instance, &population[best]);
+    let eval = utils::run_solution(instance, &population[best]);
+    let (dist, viol) = (eval.total_distance, eval.violation_time);
     println!(
         "Iteration {}: Best solution: {}, distance: {}, violation: {}",
         config.max_iterations,
