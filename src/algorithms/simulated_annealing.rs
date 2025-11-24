@@ -1,6 +1,6 @@
 use super::Metaheuristic;
 
-use crate::neighborhood::NeighborFn;
+use crate::neighborhood::{NeighborFn, TwoOpt, Swap};
 use crate::initializer::{RandomInitializer, Initializer};
 use crate::shared::{Fitness, Instance, Solution};
 use crate::eval::Evaluation;
@@ -14,6 +14,8 @@ pub struct SimulatedAnnealing {
     initial_temperature: f32,
     cooling_rate: f32,
     stopping_temperature: f32,
+    two_opt_rate: f32,
+
     rng: StdRng,
 
     neighbor_buffer: Solution,
@@ -21,13 +23,13 @@ pub struct SimulatedAnnealing {
 
 impl SimulatedAnnealing {
 
-    
-    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
+    pub fn new(initial_temperature: f32, two_opt_rate: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
 
             let solution_size = instance.size();
 
             SimulatedAnnealing {
             initial_temperature,
+            two_opt_rate,
             cooling_rate,
             stopping_temperature,
             rng: StdRng::from_os_rng(),
@@ -35,18 +37,6 @@ impl SimulatedAnnealing {
         }
     }
 
-    fn acceptance_probability(
-        &self,
-        current_fitness: f32,
-        neighbor_fitness: f32,
-        temperature: f32,
-    ) -> f32 {
-        if neighbor_fitness < current_fitness {
-            1.0
-        } else {
-            ((current_fitness - neighbor_fitness) / temperature).exp()
-        }
-    }
     
     pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
         &mut self,
@@ -83,36 +73,53 @@ impl SimulatedAnnealing {
     }
 }
 
+
 impl SimulatedAnnealing {
-    fn single_step<E: Evaluation, N: NeighborFn>(
+    fn acceptance_probability(&self, current_fitness: f32, neighbor_fitness: f32, temperature: f32) -> f32 {
+        if neighbor_fitness < current_fitness {
+            1.0
+        } else {
+            ((current_fitness - neighbor_fitness) / temperature).exp()
+        }
+    }
+
+    fn single_step<E: Evaluation>(
         &mut self,
         solution: &mut Solution,
         fitness: &mut Fitness,
         instance: &Instance,
-        neighborhood: &mut N,
         evaluation: &E,
-    ) -> () {
+    ) {
+        let mut rng = rand::rng();
 
-        // Generate neighbor and puts it in buffer
-        neighborhood.get_neighbor(&solution, &mut self.neighbor_buffer);
+        // ensure neighbor buffer has correct length
+        if self.neighbor_buffer.len() != solution.len() {
+            self.neighbor_buffer.resize(solution.len(), 0);
+        }
+
+        let r = self.rng.random_range(0.0..1.0) ;
+
+        if r < self.two_opt_rate {
+            TwoOpt::new().get_neighbor(solution, &mut self.neighbor_buffer[..]);
+        } else {
+            Swap::new().get_neighbor(solution, &mut self.neighbor_buffer[..]);
+        }
 
         let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
-            let rand = self.rng.random_range(0.0..1.0);
-            let p = self.acceptance_probability(*fitness , neighbor_fitness, self.initial_temperature);
-        if rand < p {
-            solution.copy_from_slice(&self.neighbor_buffer);
+        let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
+        let u = rng.random_range(0.0..1.0);
+        if u < accept_prob {
+            solution.clone_from_slice(&self.neighbor_buffer[..]);
             *fitness = neighbor_fitness;
         }
-        self.initial_temperature *= self.cooling_rate;
     }
 }
 
 impl Metaheuristic for SimulatedAnnealing {
-    fn step<Eval: Evaluation, N: NeighborFn>(
+    fn step<Eval: Evaluation>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
-        neighborhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     ) {
@@ -121,10 +128,9 @@ impl Metaheuristic for SimulatedAnnealing {
                 &mut population[i],
                 &mut fitness[i],
                 instance,
-                neighborhood,
                 evaluation,
             );
-        }
+        } self.initial_temperature *= self.cooling_rate;
     }
 
     fn get_metrics(&self) -> HashMap<String, f32> {

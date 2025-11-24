@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 
 use crate::algorithms::Metaheuristic;
-use crate::neighborhood::NeighborFn;
 use crate::eval::{Evaluation, utils};
 use crate::shared::{Instance, Solution, Fitness};
 
@@ -9,13 +8,12 @@ pub struct RunConfig {
     pub max_iterations: u32,
 }
 
-pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighborFn>(
+pub fn run<Eval: Evaluation, Algo: Metaheuristic>(
 
     instance: &Instance,
     population: &mut Vec<Solution>,
     fitnesses: &mut Vec<Fitness>,
     algorithm: &mut Algo,
-    neighborhood: &mut N,
     evaluation: &Eval,
     config: &RunConfig,
 
@@ -37,7 +35,7 @@ pub fn run<Eval: Evaluation, Algo: Metaheuristic, N: NeighborFn>(
                 viol
             );
         }
-        algorithm.step(population, fitnesses, neighborhood, instance, evaluation);
+        algorithm.step(population, fitnesses, instance, evaluation);
     }
     let best = best_solution_index(population, instance, evaluation)?;
     let eval = utils::run_solution(instance, &population[best]);

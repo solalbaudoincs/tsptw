@@ -1,5 +1,6 @@
 // A solution is a hamiltionian cycle represented as a vector of node indices
-pub type Solution = Vec<u32>;
+pub type Ville = u32;
+pub type Solution = Vec<Ville>;
 
 // Un conteneur pour les pointeurs vers des idx de vecteurs dans les algorithmes
 

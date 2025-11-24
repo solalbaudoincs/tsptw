@@ -225,7 +225,10 @@ impl AppState {
             
             match self.algo_type {
                 AlgoType::SimulatedAnnealing => {
-                    let algo = SimulatedAnnealing::new(self.sa_temp, self.sa_cooling, 0.001, instance);
+                    let two_opt_rate: f32 = 0.1;
+                    let algo = SimulatedAnnealing::new(
+                        self.sa_temp, self.sa_cooling, 0.001, two_opt_rate, instance
+                    );
                     let eval = Weighted { violation_coefficient: self.violation_coefficient };
                     
                     // Calculate initial fitness
