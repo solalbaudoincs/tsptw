@@ -13,7 +13,8 @@ pub use simulated_annealing::SimulatedAnnealing;
 // mod ga;
 // pub use ga::GeneticAlgorithm;   
 
-// mod ga;
+// mod aco;
+// pub use aco::ACO;
 
 pub trait Metaheuristic {
     fn step<Eval: Evaluation, N: NeighborFn>(

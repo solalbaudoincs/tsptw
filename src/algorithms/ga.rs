@@ -6,6 +6,8 @@ use crate::eval;
 use super::Metaheuristic;
 
 use rand::Rng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 pub enum CompetitionType {
     Tournament,
@@ -20,20 +22,28 @@ pub enum CrossType {
 pub struct GeneticAlgorithm{
 
     // Paramètres de l'algorithme
+    solution_size: usize,
     crossover_rate: f32,
     competition_participation_count: usize,
     elitism_count: usize,
     crossover_type: CrossType,
     competition_type: CompetitionType,
     
+    rng: StdRng,
+
     // Buffers réutilisés, alloués UNE FOIS
     participants_buffer: Vec<usize>,
     best_idx_buffer: Vec<usize>,
     new_population_buffer: Vec<Solution>,
+    child1_visited_buffer: Vec<bool>,
+    child2_visited_buffer: Vec<bool>,
+    child1_mapping_buffer: Vec<u32>,
+    child2_mapping_buffer: Vec<u32>,
 }
 
 impl GeneticAlgorithm {
     pub fn new(
+        instance: &Instance,
         crossover_rate: f32,
         crossover_type: CrossType,
         elitism_rate: f32,
@@ -42,35 +52,43 @@ impl GeneticAlgorithm {
         max_population_size: usize,
     ) -> Self {
 
+        let solution_size = instance.size();
         let elitism_count = (elitism_rate * max_population_size as f32) as usize;
         let competition_participation_count = (competition_participation_rate * max_population_size as f32) as usize;
         
         GeneticAlgorithm {
+            solution_size,
             crossover_rate,
             crossover_type,
             elitism_count,
             competition_participation_count,
+
+            rng: StdRng::from_os_rng(),
+
             competition_type,
             participants_buffer: Vec::with_capacity(competition_participation_count),
-            best_idx_buffer: Vec::with_capacity(elitism_count),
+            best_idx_buffer: Vec::with_capacity(max_population_size),
             new_population_buffer: Vec::with_capacity(max_population_size),
+            child1_visited_buffer: vec![false; solution_size],
+            child2_visited_buffer: vec![false; solution_size],
+            child1_mapping_buffer: vec![u32::MAX; solution_size],
+            child2_mapping_buffer: vec![u32::MAX; solution_size],
         }
     }
 }
 
 impl GeneticAlgorithm {
-    fn tournament_selection(fitness: &[Fitness], participants: &[usize]) -> usize {
+    fn tournament_selection(&mut self, fitness: &[Fitness]) -> usize {
 
         // Tournament selection logic
-        let mut rng = rand::rng();
-        let mut best_idx = rng.random_range(0..participants.len());
-        best_idx = participants[best_idx];
+        let best_idx = self.rng.random_range(0..self.competition_participation_count);
+        let mut participant_best_idx = self.participants_buffer[best_idx];
 
-        for _ in 0..participants.len() {
-            let mut ind = rng.random_range(0..participants.len());
-            ind = participants[ind];
-            if fitness[ind] > fitness[best_idx] {
-                best_idx = participants[ind];
+        for _ in 0..self.competition_participation_count {
+            let ind = self.rng.random_range(0..self.competition_participation_count);
+            let participant_ind = self.participants_buffer[ind];
+            if fitness[participant_ind] > fitness[participant_best_idx] {
+                participant_best_idx = participant_ind;
             }
         }
         best_idx
@@ -78,20 +96,25 @@ impl GeneticAlgorithm {
 }
 
 impl GeneticAlgorithm {
-    fn roulette_selection(fitness: &[Fitness], participants: &[usize]) -> usize {
+    fn roulette_selection(&mut self, fitness: &[Fitness]) -> usize {
 
         // Roulette wheel selection logic
-        let total_fitness: f32 = participants.iter().map(|&idx| fitness[idx]).sum();
-        let mut rng = rand::rng();
-        let mut pick = rng.random_range(0.0..total_fitness);
+        let total_fitness: f32 = self.participants_buffer
+        .iter()
+        .map(|&idx| fitness[idx])
+        .sum();
+        let mut pick = self.rng.random_range(0.0..total_fitness);
         
-        for idx in 0..participants.len() {
-            pick -= fitness[participants[idx]];
+        for idx in 0..self.competition_participation_count {
+            pick -= fitness[self.participants_buffer[idx]];
             if pick <= 0.0 {
-                return participants[idx];
+                return self.participants_buffer[idx];
             }
         }
-        participants.last().cloned().unwrap()
+        self.participants_buffer
+        .last()
+        .cloned()
+        .unwrap()
     }
 }
 
@@ -99,18 +122,24 @@ impl GeneticAlgorithm {
 impl GeneticAlgorithm {
     fn select_best(&mut self, fitness: &[Fitness]) -> () {
         
-        let elitism_count = self.best_idx_buffer.len();
-
-        for i in 0..elitism_count {
-            self.best_idx_buffer[i] = i
-        };
-        
-        utils::argsort_f32(&fitness[0..elitism_count], &mut self.best_idx_buffer[..]);
-
-        for i in elitism_count..fitness.len() {
-            let v = fitness;
-            let target = fitness[i];
+        // Initialize indices
+        for i in 0..self.solution_size {
+            self.best_idx_buffer[i] = i;
         }
+        
+        // Use select_nth_unstable to partition and find the best elitism_count indices
+        // We want the smallest fitness values (best solutions), so we partition at elitism_count - 1
+        self.best_idx_buffer.select_nth_unstable_by(
+            self.elitism_count - 1, 
+            |&a, &b| {
+            fitness[a]
+            .partial_cmp(&fitness[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+        }
+    );
+        
+        // The first elitism_count elements are now the best indices
+        // No need for additional sorting since select_nth_unstable partitions correctly
     }
 }
 
@@ -118,17 +147,28 @@ impl GeneticAlgorithm {
 impl GeneticAlgorithm {
     fn select_particiants(&mut self, population: &[Solution]) -> () {
 
-        // Logic to select participants for selection round
-        let mut rng = rand::rng();
-        let mut cpt= 0;
-        let mut participants_check = HashSet::new();
-
-        while cpt < self.competition_participation_count {
-            let ind = rng.random_range(0..population.len());
-            if !participants_check.contains(&ind) {
-                participants_check.insert(ind);
-                self.participants_buffer[cpt] = ind;
-                cpt += 1;
+        // Selection aléatoire uniforme avec roulette simple
+        for i in 0..self.competition_participation_count {
+            let mut pick = self.rng.random_range(0..population.len() - i);
+            
+            // Parcourir la population et décrémenter pick jusqu'à 0
+            for j in 0..population.len() {
+                // Si l'individu n'est pas déjà sélectionné
+                let mut already_selected = false;
+                for k in 0..i {
+                    if self.participants_buffer[k] == j {
+                        already_selected = true;
+                        break;
+                    }
+                }
+                
+                if !already_selected {
+                    if pick == 0 {
+                        self.participants_buffer[i] = j;
+                        break;
+                    }
+                    pick -= 1;
+                }
             }
         }
     }
@@ -141,10 +181,10 @@ impl GeneticAlgorithm {
         self.select_particiants(population);
         match self.competition_type {
             CompetitionType::Tournament => {
-                Self::tournament_selection(fitness, &self.participants_buffer)
+                self.tournament_selection(fitness)
             }
             CompetitionType::Roulette => {
-                Self::roulette_selection(fitness, &self.participants_buffer)
+                self.roulette_selection(fitness)
             }
         }
     }
@@ -155,24 +195,23 @@ impl GeneticAlgorithm {
 
         // Order Crossover (OX) logic
         let size = parent1.len();
-        let mut rng = rand::rng();
         
         let (left_pop_buffer, right_pop_buffer) = self.new_population_buffer.split_at_mut(idx+1);
         let child1_route = &mut left_pop_buffer[idx];
         let child2_route = &mut right_pop_buffer[0];
         
-        let mut child1_route_hash: HashSet<u32> = HashSet::new();
-        let mut child2_route_hash: HashSet<u32> = HashSet::new();
+        self.child1_visited_buffer.fill(false);
+        self.child2_visited_buffer.fill(false);
 
-        let start = rng.random_range(0..size);
-        let end = rng.random_range(start..size);
+        let start = self.rng.random_range(0..size);
+        let end = self.rng.random_range(start..size);
 
         for i in start..end {
             child1_route[i] = parent1[i];
             child2_route[i] = parent2[i];
 
-            child1_route_hash.insert(parent1[i]);
-            child2_route_hash.insert(parent2[i]);
+            self.child1_visited_buffer[parent1[i] as usize] = true;
+            self.child2_visited_buffer[parent2[i] as usize] = true;
         }
         
 
@@ -182,12 +221,12 @@ impl GeneticAlgorithm {
         for i in 0..size {
             let idx = (end + i) % size;
 
-            if !child1_route_hash.contains(&parent2[idx]) {
+            if !self.child1_visited_buffer[parent2[idx] as usize] {
                 child1_route[current_pos1] = parent2[idx];
                 current_pos1 = (current_pos1 + 1) % size;
             }
 
-            if !child2_route_hash.contains(&parent1[idx]) {
+            if !self.child2_visited_buffer[parent1[idx] as usize] {
                 child2_route[current_pos2] = parent1[idx];
                 current_pos2 = (current_pos2 + 1) % size;
             }
@@ -196,71 +235,76 @@ impl GeneticAlgorithm {
 }
 
 impl GeneticAlgorithm {
-    pub fn pmx_resolve_mapping(
-        map: &HashMap<u32, u32>,
-        start: u32,
-    ) -> u32 {
+    fn pmx_resolve_mapping(&self, mapping: &[u32], start: u32) -> u32 {
         let mut current = start;
-        let max_iter = map.len().saturating_add(1);
-
+        let max_iter = mapping.len() + 1;
+        
         for _ in 0..max_iter {
-            match map.get(&current) {
-                Some(mapped) => {
-                    let mapped_value = *mapped;
-                    if !map.contains_key(&mapped_value) {
-                        return mapped_value;
-                    } else {
-                        current = mapped_value;
-                    }
-                }
-                None => return current,
+            let mapped = mapping[current as usize];
+            if mapped == u32::MAX {
+                return current;
             }
-        } current
+            current = mapped;
+        }
+        current
     }
-}
 
-impl GeneticAlgorithm {
     fn pmx_crossover(&mut self, parent1: &Solution, parent2: &Solution, idx: usize) -> () {
         // PMX crossover logic
         let size = parent1.len();
-        let mut rng = rand::rng();
         // obtenir deux références mutuelles disjointes
         let (left_pop_buffer, right_pop_buffer) = self.new_population_buffer.split_at_mut(idx+1);
         let child1_route = &mut left_pop_buffer[idx];
         let child2_route = &mut right_pop_buffer[0];
 
-        let mut child1_route_map = HashMap::new();
-        let mut child2_route_map = HashMap::new();
+        // Réinitialiser les buffers de mapping (u32::MAX = pas de mapping)
+        self.child1_mapping_buffer.fill(u32::MAX);
+        self.child2_mapping_buffer.fill(u32::MAX);
+        self.child1_visited_buffer.fill(false);
+        self.child2_visited_buffer.fill(false);
 
-        let start = rng.random_range(0..size);
-        let end = rng.random_range(start..size);
+        let start = self.rng.random_range(0..size);
+        let end = self.rng.random_range(start..size);
 
+        // Copier le segment et créer le mapping
         for i in start..end {
-            child1_route[i] = parent1[i];
-            child2_route[i] = parent2[i];
-
-            child1_route_map.insert(parent1[i], parent2[i]);
-            child2_route_map.insert(parent2[i], parent1[i]);
+            let val1 = parent1[i];
+            let val2 = parent2[i];
+            
+            child1_route[i] = val1;
+            child2_route[i] = val2;
+            
+            self.child1_visited_buffer[val1 as usize] = true;
+            self.child2_visited_buffer[val2 as usize] = true;
+            
+            // Créer le mapping: dans child1, val1 mappe vers val2 (et vice versa)
+            self.child1_mapping_buffer[val1 as usize] = val2;
+            self.child2_mapping_buffer[val2 as usize] = val1;
         }
 
-        let mut current_pos1 = end % size;
-        let mut current_pos2 = end % size;
-
+        // Remplir le reste en utilisant le mapping PMX
         for i in 0..size {
-            let idx = (end + i) % size;
-
-            if child1_route_map.contains_key(&parent2[idx]) {
-                let mapped_value = Self::pmx_resolve_mapping(&child1_route_map, parent2[idx]);
-                child1_route[current_pos1] = mapped_value;
-                current_pos1 = (current_pos1 + 1) % size;
-                }
-            
-
-            if child2_route_map.contains_key(&parent1[idx]) {
-                let mapped_value = Self::pmx_resolve_mapping(&child2_route_map, parent1[idx]);
-                child2_route[current_pos2] = mapped_value;
-                current_pos2 = (current_pos2 + 1) % size;
+            if i >= start && i < end {
+                continue; // Skip le segment déjà copié
             }
+            
+            // Pour child1, prendre de parent2
+            let mut val2 = parent2[i];
+            if self.child1_visited_buffer[val2 as usize] {
+                // Suivre le mapping jusqu'à trouver une valeur non utilisée
+                val2 = self.pmx_resolve_mapping(&self.child1_mapping_buffer, val2);
+            }
+            child1_route[i] = val2;
+            self.child1_visited_buffer[val2 as usize] = true;
+            
+            // Pour child2, prendre de parent1
+            let mut val1 = parent1[i];
+            if self.child2_visited_buffer[val1 as usize] {
+                // Suivre le mapping jusqu'à trouver une valeur non utilisée
+                val1 = self.pmx_resolve_mapping(&self.child2_mapping_buffer, val1);
+            }
+            child2_route[i] = val1;
+            self.child2_visited_buffer[val1 as usize] = true;
         }
     }
 }
@@ -287,10 +331,11 @@ impl GeneticAlgorithm {
 }
 
 impl Metaheuristic for GeneticAlgorithm {
-    fn step<Eval: eval::Evaluation>(
+    fn step<Eval: eval::Evaluation, N: crate::neighborhood::NeighborFn>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
+        _neighborhood: &mut N,
         instance: &Instance,
         evaluation: &Eval
     ) -> () {
@@ -301,10 +346,12 @@ impl Metaheuristic for GeneticAlgorithm {
         // reallocating memory each generation
         self.select_best(fitness);
 
+        let best_idx = &self.best_idx_buffer[..self.elitism_count];
+
         let mut cpt = 0;
 
         // Adds the best individuals to the new population
-        for idx in self.best_idx_buffer.iter() {
+        for idx in best_idx.iter() {
             self.new_population_buffer[cpt] = population[*idx].clone();
             cpt += 1;
         }
@@ -333,7 +380,7 @@ impl Metaheuristic for GeneticAlgorithm {
         population.clone_from_slice(&self.new_population_buffer[..]);
 
         // Re-evaluate fitness of the new population
-        for i in self.best_idx_buffer.len()..pop_size {
+        for i in self.elitism_count..pop_size {
             fitness[i] = evaluation.score(instance, &population[i]);
         }
     }
