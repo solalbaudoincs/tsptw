@@ -4,13 +4,31 @@ use crate::problem::Instance;
 use crate::gui::solver::{Solver, ConcreteSolver};
 use crate::problem::instance::io::load_instance;
 use crate::initializer::{Initializer, RandomInitializer};
-use crate::problem::{Population, evaluation::{Weighted, Evaluation}};
+use crate::problem::{Population, evaluation::{Weighted, Evaluation, Lexicographic}};
 use crate::algorithms::SimulatedAnnealing;
-use crate::neighbourhood::Swap;
+use crate::neighbourhood::{Swap, TwoOpt};
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum AppPhase {
+    Configuration,
+    Running,
+}
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum AlgoType {
     SimulatedAnnealing,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum NeighborhoodType {
+    Swap,
+    TwoOpt,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum EvaluationType {
+    Weighted,
+    Lexicographic,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -149,10 +167,14 @@ impl RunState {
 }
 
 pub struct AppState {
+    pub phase: AppPhase,
     pub instance_path: String,
     pub instance: Option<Instance>,
     
     pub algo_type: AlgoType,
+    pub neighborhood_type: NeighborhoodType,
+    pub evaluation_type: EvaluationType,
+    
     pub sa_temp: f32,
     pub sa_cooling: f32,
     pub violation_coefficient: f32,
@@ -175,9 +197,12 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
+            phase: AppPhase::Configuration,
             instance_path: "data/inst1".to_string(),
             instance: None,
             algo_type: AlgoType::SimulatedAnnealing,
+            neighborhood_type: NeighborhoodType::Swap,
+            evaluation_type: EvaluationType::Weighted,
             sa_temp: 1000.0,
             sa_cooling: 0.9995,
             violation_coefficient: 1000.0,
@@ -215,24 +240,49 @@ impl AppState {
             match self.algo_type {
                 AlgoType::SimulatedAnnealing => {
                     let algo = SimulatedAnnealing::new(self.sa_temp, self.sa_cooling, 0.001);
-                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
                     
-                    // Calculate initial fitness
-                    let initial_fitness = eval.score(instance, &population[0]);
-                    let fitnesses = vec![initial_fitness];
-
-                    let neighbor = Swap::new();
-                    
-                    let solver = ConcreteSolver::new(
-                        algo,
-                        eval,
-                        neighbor,
-                        instance.clone(),
-                        population,
-                        fitnesses,
-                    );
-                    run.metric_names = solver.get_metric_names();
-                    run.solver = Some(Box::new(solver));
+                    match self.evaluation_type {
+                        EvaluationType::Weighted => {
+                            let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                            let initial_fitness = eval.score(instance, &population[0]);
+                            let fitnesses = vec![initial_fitness];
+                            
+                            match self.neighborhood_type {
+                                NeighborhoodType::Swap => {
+                                    let neighbor = Swap::new();
+                                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                                    run.metric_names = solver.get_metric_names();
+                                    run.solver = Some(Box::new(solver));
+                                },
+                                NeighborhoodType::TwoOpt => {
+                                    let neighbor = TwoOpt::new();
+                                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                                    run.metric_names = solver.get_metric_names();
+                                    run.solver = Some(Box::new(solver));
+                                }
+                            }
+                        },
+                        EvaluationType::Lexicographic => {
+                            let eval = Lexicographic::new(false); // Default to violation first
+                            let initial_fitness = eval.score(instance, &population[0]);
+                            let fitnesses = vec![initial_fitness];
+                            
+                            match self.neighborhood_type {
+                                NeighborhoodType::Swap => {
+                                    let neighbor = Swap::new();
+                                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                                    run.metric_names = solver.get_metric_names();
+                                    run.solver = Some(Box::new(solver));
+                                },
+                                NeighborhoodType::TwoOpt => {
+                                    let neighbor = TwoOpt::new();
+                                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                                    run.metric_names = solver.get_metric_names();
+                                    run.solver = Some(Box::new(solver));
+                                }
+                            }
+                        }
+                    }
                 }
             }
             run.is_running = true;

@@ -2,14 +2,15 @@ use super::NeighborFn;
 use crate::problem::Solution;
 
 use rand::Rng;
+use rand::SeedableRng;
 
 pub struct TwoOpt {
-    rng: rand::rngs::ThreadRng,
+    rng: rand::rngs::StdRng,
 }
 impl TwoOpt {
     pub fn new() -> Self {
         TwoOpt {
-            rng: rand::rngs::ThreadRng::default(),
+            rng: rand::rngs::StdRng::from_os_rng(),
         }
     }
 }
