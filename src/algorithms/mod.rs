@@ -1,4 +1,3 @@
-use crate::neighborhood::NeighborFn;
 use crate::shared::{Instance, Solution, Fitness};
 use crate::eval::Evaluation;
 
@@ -10,18 +9,17 @@ pub use hill_climbing::HillClimbing;
 mod simulated_annealing;
 pub use simulated_annealing::SimulatedAnnealing;
 
-// mod ga;
-// pub use ga::GeneticAlgorithm;   
+mod ga;
+pub use ga::GeneticAlgorithm;   
 
-// mod aco;
-// pub use aco::ACO;
+mod aco;
+pub use aco::ACO;
 
 pub trait Metaheuristic {
-    fn step<Eval: Evaluation, N: NeighborFn>(
+    fn step<Eval: Evaluation>(
         &mut self,
         population: &mut [Solution],
         fitnesses: &mut [Fitness],
-        neighborhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     );

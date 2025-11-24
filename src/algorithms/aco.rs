@@ -14,7 +14,6 @@ pub struct ACO{
     alpha: f32,
     beta: f32,
     pheromone_matrix: Array2<f32>,
-    max_iterations: usize,
     pheromone_deposit: f32,
     
     // Buffers réutilisés pour éviter les allocations
@@ -48,7 +47,6 @@ impl ACO {
             alpha,
             beta,
             pheromone_matrix,
-            max_iterations,
             pheromone_deposit,
             visited_buffer: vec![false; num_nodes],
             solution_buffer: Vec::with_capacity(num_nodes),
@@ -119,7 +117,9 @@ impl ACO {
                 return self.unvisited_nodes_buffer[idx];
             }
         }
-        *self.unvisited_nodes_buffer.last().unwrap()
+        *self.unvisited_nodes_buffer
+        .last()
+        .unwrap()
     }
 }
 

@@ -1,5 +1,6 @@
 pub mod types;
 
+pub use types::Ville;
 pub use types::Solution;
 pub use types::Window;
 pub use types::Fitness;

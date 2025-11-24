@@ -1,6 +1,4 @@
-use std::collections::{HashMap, HashSet};
-
-use crate::shared::{Solution, Instance, Fitness};
+use crate::shared::{Solution, Instance, Fitness, Ville};
 use crate::eval;
 
 use super::Metaheuristic;
@@ -91,11 +89,9 @@ impl GeneticAlgorithm {
                 participant_best_idx = participant_ind;
             }
         }
-        best_idx
+        participant_best_idx
     }
-}
 
-impl GeneticAlgorithm {
     fn roulette_selection(&mut self, fitness: &[Fitness]) -> usize {
 
         // Roulette wheel selection logic
@@ -116,10 +112,8 @@ impl GeneticAlgorithm {
         .cloned()
         .unwrap()
     }
-}
 
 
-impl GeneticAlgorithm {
     fn select_best(&mut self, fitness: &[Fitness]) -> () {
         
         // Initialize indices
@@ -141,10 +135,7 @@ impl GeneticAlgorithm {
         // The first elitism_count elements are now the best indices
         // No need for additional sorting since select_nth_unstable partitions correctly
     }
-}
 
-
-impl GeneticAlgorithm {
     fn select_particiants(&mut self, population: &[Solution]) -> () {
 
         // Selection aléatoire uniforme avec roulette simple
@@ -172,9 +163,7 @@ impl GeneticAlgorithm {
             }
         }
     }
-}
 
-impl GeneticAlgorithm {
     fn selection_round(&mut self, population: &[Solution], fitness: &[Fitness]) -> usize {
 
         // Selection logic based on competition type
@@ -191,29 +180,32 @@ impl GeneticAlgorithm {
 }
 
 impl GeneticAlgorithm {
-    fn ox_crossover(&mut self, parent1: &Solution, parent2: &Solution, idx: usize) -> () {
+    fn ox_crossover(
+        parent1: &[Ville],
+        parent2: &[Ville],
+        child1_route: &mut Solution,
+        child2_route: &mut Solution,
+        child1_visited_buffer: &mut Vec<bool>,
+        child2_visited_buffer: &mut Vec<bool>,
+        rng: &mut StdRng,
+    ) -> () {
 
         // Order Crossover (OX) logic
         let size = parent1.len();
         
-        let (left_pop_buffer, right_pop_buffer) = self.new_population_buffer.split_at_mut(idx+1);
-        let child1_route = &mut left_pop_buffer[idx];
-        let child2_route = &mut right_pop_buffer[0];
-        
-        self.child1_visited_buffer.fill(false);
-        self.child2_visited_buffer.fill(false);
+        child1_visited_buffer.fill(false);
+        child2_visited_buffer.fill(false);
 
-        let start = self.rng.random_range(0..size);
-        let end = self.rng.random_range(start..size);
+        let start = rng.random_range(0..size);
+        let end = rng.random_range(start..size);
 
         for i in start..end {
             child1_route[i] = parent1[i];
             child2_route[i] = parent2[i];
 
-            self.child1_visited_buffer[parent1[i] as usize] = true;
-            self.child2_visited_buffer[parent2[i] as usize] = true;
+            child1_visited_buffer[parent1[i] as usize] = true;
+            child2_visited_buffer[parent2[i] as usize] = true;
         }
-        
 
         let mut current_pos1 = end % size;
         let mut current_pos2 = end % size;
@@ -221,12 +213,12 @@ impl GeneticAlgorithm {
         for i in 0..size {
             let idx = (end + i) % size;
 
-            if !self.child1_visited_buffer[parent2[idx] as usize] {
+            if !child1_visited_buffer[parent2[idx] as usize] {
                 child1_route[current_pos1] = parent2[idx];
                 current_pos1 = (current_pos1 + 1) % size;
             }
 
-            if !self.child2_visited_buffer[parent1[idx] as usize] {
+            if !child2_visited_buffer[parent1[idx] as usize] {
                 child2_route[current_pos2] = parent1[idx];
                 current_pos2 = (current_pos2 + 1) % size;
             }
@@ -235,7 +227,11 @@ impl GeneticAlgorithm {
 }
 
 impl GeneticAlgorithm {
-    fn pmx_resolve_mapping(&self, mapping: &[u32], start: u32) -> u32 {
+
+    fn pmx_resolve_mapping(
+        mapping: &[u32], 
+        start: u32
+    ) -> u32 {
         let mut current = start;
         let max_iter = mapping.len() + 1;
         
@@ -249,22 +245,23 @@ impl GeneticAlgorithm {
         current
     }
 
-    fn pmx_crossover(&mut self, parent1: &Solution, parent2: &Solution, idx: usize) -> () {
+    fn pmx_crossover(
+        parent1: &[Ville], 
+        parent2: &[Ville], 
+        child1_route: &mut Solution,
+        child2_route: &mut Solution,
+        child1_mapping_buffer: &mut Vec<u32>,
+        child2_mapping_buffer: &mut Vec<u32>,
+        child1_visited_buffer: &mut Vec<bool>,
+        child2_visited_buffer: &mut Vec<bool>,
+        rng: &mut StdRng,
+    ) -> () {
+
         // PMX crossover logic
         let size = parent1.len();
-        // obtenir deux références mutuelles disjointes
-        let (left_pop_buffer, right_pop_buffer) = self.new_population_buffer.split_at_mut(idx+1);
-        let child1_route = &mut left_pop_buffer[idx];
-        let child2_route = &mut right_pop_buffer[0];
-
-        // Réinitialiser les buffers de mapping (u32::MAX = pas de mapping)
-        self.child1_mapping_buffer.fill(u32::MAX);
-        self.child2_mapping_buffer.fill(u32::MAX);
-        self.child1_visited_buffer.fill(false);
-        self.child2_visited_buffer.fill(false);
-
-        let start = self.rng.random_range(0..size);
-        let end = self.rng.random_range(start..size);
+        
+        let start = rng.random_range(0..size);
+        let end = rng.random_range(start..size);
 
         // Copier le segment et créer le mapping
         for i in start..end {
@@ -274,55 +271,78 @@ impl GeneticAlgorithm {
             child1_route[i] = val1;
             child2_route[i] = val2;
             
-            self.child1_visited_buffer[val1 as usize] = true;
-            self.child2_visited_buffer[val2 as usize] = true;
+            child1_visited_buffer[val1 as usize] = true;
+            child2_visited_buffer[val2 as usize] = true;
             
             // Créer le mapping: dans child1, val1 mappe vers val2 (et vice versa)
-            self.child1_mapping_buffer[val1 as usize] = val2;
-            self.child2_mapping_buffer[val2 as usize] = val1;
+            child1_mapping_buffer[val1 as usize] = val2;
+            child2_mapping_buffer[val2 as usize] = val1;
         }
-
+        
         // Remplir le reste en utilisant le mapping PMX
         for i in 0..size {
+            
             if i >= start && i < end {
                 continue; // Skip le segment déjà copié
             }
-            
+
             // Pour child1, prendre de parent2
             let mut val2 = parent2[i];
-            if self.child1_visited_buffer[val2 as usize] {
+            if child1_visited_buffer[val2 as usize] {
                 // Suivre le mapping jusqu'à trouver une valeur non utilisée
-                val2 = self.pmx_resolve_mapping(&self.child1_mapping_buffer, val2);
+                val2 = Self::pmx_resolve_mapping(&child1_mapping_buffer, val2);
             }
             child1_route[i] = val2;
-            self.child1_visited_buffer[val2 as usize] = true;
+            child1_visited_buffer[val2 as usize] = true;
             
             // Pour child2, prendre de parent1
             let mut val1 = parent1[i];
-            if self.child2_visited_buffer[val1 as usize] {
+            if child2_visited_buffer[val1 as usize] {
                 // Suivre le mapping jusqu'à trouver une valeur non utilisée
-                val1 = self.pmx_resolve_mapping(&self.child2_mapping_buffer, val1);
+                val1 = Self::pmx_resolve_mapping(&child2_mapping_buffer, val1);
             }
             child2_route[i] = val1;
-            self.child2_visited_buffer[val1 as usize] = true;
+            child2_visited_buffer[val1 as usize] = true;
         }
     }
-}
+}   
+
 
 impl GeneticAlgorithm {
-    fn crossover(&mut self, parent1: &Solution, parent2: &Solution, cpt: usize) -> () {
+    fn crossover(&mut self, parent1: &[Ville], parent2: &[Ville], cpt: usize) -> () {
+        
+        let (left_pop_buffer, right_pop_buffer) = self.new_population_buffer.split_at_mut(cpt+1);
+        let child1_route = &mut left_pop_buffer[cpt];
+        let child2_route = &mut right_pop_buffer[0];
+
         match self.crossover_type {
             CrossType::OX => {
-                self.ox_crossover(parent1, parent2, cpt)
+                Self::ox_crossover(
+                    parent1, 
+                    parent2, 
+                    child1_route,
+                    child2_route,
+                    &mut self.child1_visited_buffer,
+                    &mut self.child2_visited_buffer,
+                    &mut self.rng,
+                )
             }
             CrossType::PMX => {
-                self.pmx_crossover(parent1, parent2, cpt)
+                Self::pmx_crossover(
+                    parent1, 
+                    parent2, 
+                    child1_route,
+                    child2_route,
+                    &mut self.child1_mapping_buffer,
+                    &mut self.child2_mapping_buffer,
+                    &mut self.child1_visited_buffer,
+                    &mut self.child2_visited_buffer,
+                    &mut self.rng,
+                )
             }
         }
     }
-}
 
-impl GeneticAlgorithm {
     fn select_parents(&mut self, population: &[Solution], fitness: &[Fitness]) -> (usize, usize) {
         let parent1 = self.selection_round(population, fitness);
         let parent2 = self.selection_round(population, fitness);
@@ -330,12 +350,12 @@ impl GeneticAlgorithm {
     }
 }
 
+
 impl Metaheuristic for GeneticAlgorithm {
-    fn step<Eval: eval::Evaluation, N: crate::neighborhood::NeighborFn>(
+    fn step<Eval: eval::Evaluation>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
-        _neighborhood: &mut N,
         instance: &Instance,
         evaluation: &Eval
     ) -> () {
@@ -352,7 +372,7 @@ impl Metaheuristic for GeneticAlgorithm {
 
         // Adds the best individuals to the new population
         for idx in best_idx.iter() {
-            self.new_population_buffer[cpt] = population[*idx].clone();
+            self.new_population_buffer[cpt].clone_from_slice(&population[*idx][..]);
             cpt += 1;
         }
 
@@ -362,12 +382,13 @@ impl Metaheuristic for GeneticAlgorithm {
             let parent1 = &population[parent1_idx];
             let parent2 = &population[parent2_idx];
 
-            let rand = rand::rng().random_range(0.0..1.0);
+            let rand = self.rng.random_range(0.0..1.0);
 
             if rand < self.crossover_rate {
 
                 // Crossover, produces two children that are added to the new population buffer in place
                 self.crossover(parent1, parent2, cpt)
+                
             } else {
 
                 // No crossover, simply clone the parents into the new population buffer
