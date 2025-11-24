@@ -1,6 +1,5 @@
 use eframe::egui;
-use crate::gui::state::{AppState, ViewMode};
-use crate::gui::config;
+use crate::gui::state::{AppState, ViewMode, AppPhase};
 use crate::gui::components;
 
 pub struct TspApp {
@@ -23,28 +22,39 @@ impl eframe::App for TspApp {
             ctx.request_repaint();
         }
 
-        // UI
-        egui::SidePanel::left("config_panel").show(ctx, |ui| {
-            config::show(ui, &mut self.state);
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(idx) = self.state.selected_run_index {
-                components::dashboard::show(ui, &mut self.state, idx);
-            } else {
-                // Main View (Grid or Statistics)
-                ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.state.view_mode, ViewMode::Grid, "Grid View");
-                    ui.selectable_value(&mut self.state.view_mode, ViewMode::Statistics, "Statistics View");
+        match self.state.phase {
+            AppPhase::Configuration => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    components::welcome::show(ui, &mut self.state);
                 });
-                ui.separator();
+            },
+            AppPhase::Running => {
+                // Top bar for navigation/control could go here if needed
+                egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("Back to Config").clicked() {
+                            self.state.phase = AppPhase::Configuration;
+                            self.state.runs.clear();
+                            self.state.selected_run_index = None;
+                        }
+                        ui.separator();
+                        ui.selectable_value(&mut self.state.view_mode, ViewMode::Grid, "Grid View");
+                        ui.selectable_value(&mut self.state.view_mode, ViewMode::Statistics, "Statistics View");
+                    });
+                });
 
-                match self.state.view_mode {
-                    ViewMode::Grid => components::grid::show(ui, &mut self.state),
-                    ViewMode::Statistics => components::statistics::show(ui, &self.state),
-                }
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    if let Some(idx) = self.state.selected_run_index {
+                        components::dashboard::show(ui, &mut self.state, idx);
+                    } else {
+                        match self.state.view_mode {
+                            ViewMode::Grid => components::grid::show(ui, &mut self.state),
+                            ViewMode::Statistics => components::statistics::show(ui, &self.state),
+                        }
+                    }
+                });
             }
-        });
+        }
     }
 }
 
