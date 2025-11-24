@@ -12,7 +12,8 @@ pub trait NeighborFn {
     fn get_neighbor(&mut self, solution: &Solution, buffer: &mut [u32]) -> ();
 }
 
-enum NeighborType {
+#[derive(PartialEq, Clone, Copy)]
+pub enum NeighborhoodType {
     Swap,
     TwoOpt,
 }

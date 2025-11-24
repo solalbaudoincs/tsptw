@@ -2,7 +2,7 @@ use super::Metaheuristic;
 
 use crate::eval::Evaluation;
 use crate::shared::{Fitness, Instance, Solution};
-use crate::neighborhood::{Swap, TwoOpt, NeighborFn};
+use crate::neighborhood::{NeighborFn};
 
 use rand::Rng;
 use rand::rngs::StdRng;
@@ -12,18 +12,16 @@ use rand::SeedableRng;
 pub struct HillClimbing {
     nb_neighbors: usize,
     neighbor_buffer: Solution,
-    two_opt_rate: f32,
     rng: rand::rngs::StdRng,
 }
 
 impl HillClimbing {
-    pub fn new(nb_neighbors: usize, two_opt_rate: f32, instance: &Instance) -> Self {
+    pub fn new(nb_neighbors: usize, instance: &Instance) -> Self {
 
         let neighbor_buffer = vec![0; instance.size()];
         HillClimbing {
             nb_neighbors,
             neighbor_buffer,
-            two_opt_rate,
             rng: StdRng::from_os_rng(),
         }
     }

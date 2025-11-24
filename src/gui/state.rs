@@ -3,12 +3,17 @@ use rayon::prelude::*;
 
 use crate::gui::solver::{Solver, ConcreteSolver};
 use crate::initializer::{Initializer, RandomInitializer};
-use crate::algorithms::SimulatedAnnealing;
-use crate::algorithms::{GeneticAlgorithm, CrossoverType, CompetitionType, HillClimbing, ACO};
-use crate::neighborhood::Swap;
-use crate::eval::{Weighted, Evaluation};
+use crate::algorithms::{SimulatedAnnealing, GeneticAlgorithm, CrossoverType, CompetitionType, HillClimbing, ACO};
+use crate::neighborhood::{Swap, NeighborhoodType};
+use crate::eval::{Weighted, Evaluation, EvaluationType};
 use crate::shared::{Instance, GraphInstance, Solution};
 use crate::io::io_instance::load_instance;
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum AppPhase {
+    Configuration,
+    Running,
+}
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum AlgoType {
@@ -154,11 +159,15 @@ impl RunState {
 }
 
 pub struct AppState {
+    pub phase: AppPhase,
     pub instance_path: String,
     pub instance: Option<Instance>,
     pub graph_instance: Option<GraphInstance>,
     
     pub algo_type: AlgoType,
+    pub neighborhood_type: NeighborhoodType,
+    pub evaluation_type: EvaluationType,
+    
     pub sa_temp: f32,
     pub sa_cooling: f32,
     pub violation_coefficient: f32,
@@ -181,10 +190,13 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
+            phase: AppPhase::Configuration,
             instance_path: "data/inst1".to_string(),
             instance: None,
             graph_instance: None,
             algo_type: AlgoType::SimulatedAnnealing,
+            neighborhood_type: NeighborhoodType::Swap,
+            evaluation_type: EvaluationType::Weighted,
             sa_temp: 1000.0,
             sa_cooling: 0.9995,
             violation_coefficient: 1000.0,

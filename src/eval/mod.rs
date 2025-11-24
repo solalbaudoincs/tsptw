@@ -12,6 +12,12 @@ pub use weighted::GeneralWeighted;
 pub type Fitness = f32;
 pub type Fitnesses = Vec<Fitness>;
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum EvaluationType {
+    Weighted,
+    Lexicographic,
+}
+
 use crate::shared::{Instance, Solution};
 
 pub trait Evaluation {

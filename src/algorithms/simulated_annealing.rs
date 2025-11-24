@@ -1,6 +1,6 @@
 use super::Metaheuristic;
 
-use crate::neighborhood::{self, NeighborFn, Swap, TwoOpt};
+use crate::neighborhood::{NeighborFn};
 use crate::initializer::{RandomInitializer, Initializer};
 use crate::shared::{Fitness, Instance, Solution};
 use crate::eval::Evaluation;
@@ -94,7 +94,6 @@ impl SimulatedAnnealing {
         neighborhood: &mut Neighborhood,
         evaluation: &E,
     ) {
-        let mut rng = rand::rng();
 
         // ensure neighbor buffer has correct length
         if self.neighbor_buffer.len() != solution.len() {
@@ -106,7 +105,7 @@ impl SimulatedAnnealing {
 
         let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
         let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
-        let u = rng.random_range(0.0..1.0);
+        let u = self.rng.random_range(0.0..1.0);
 
         if u < accept_prob {
             solution.clone_from_slice(&self.neighbor_buffer[..]);
