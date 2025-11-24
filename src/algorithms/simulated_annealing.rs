@@ -10,6 +10,7 @@ use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
+/// Algorithme de Recuit Simulé pour le TSPTW, utilisant des voisins générés par des opérations de swap et de 2-opt.
 pub struct SimulatedAnnealing {
     initial_temperature: f32,
     cooling_rate: f32,
@@ -19,6 +20,7 @@ pub struct SimulatedAnnealing {
     rng: StdRng,
 
     neighbor_buffer: Solution,
+    acceptance_probability_avg: f32,
 }
 
 impl SimulatedAnnealing {
@@ -34,6 +36,7 @@ impl SimulatedAnnealing {
             stopping_temperature,
             rng: StdRng::from_os_rng(),
             neighbor_buffer: vec![0; solution_size],
+            acceptance_probability_avg: 1.0,
         }
     }
 
@@ -75,11 +78,13 @@ impl SimulatedAnnealing {
 
 
 impl SimulatedAnnealing {
-    fn acceptance_probability(&self, current_fitness: f32, neighbor_fitness: f32, temperature: f32) -> f32 {
+    fn acceptance_probability(&mut self, current_fitness: f32, neighbor_fitness: f32, temperature: f32) -> f32 {
         if neighbor_fitness < current_fitness {
             1.0
         } else {
-            ((current_fitness - neighbor_fitness) / temperature).exp()
+            let proba = ((current_fitness - neighbor_fitness) / temperature).exp();
+            self.acceptance_probability_avg = 0.9 * self.acceptance_probability_avg + 0.1 * proba;
+            proba
         }
     }
 
@@ -111,7 +116,8 @@ impl SimulatedAnnealing {
         if u < accept_prob {
             solution.clone_from_slice(&self.neighbor_buffer[..]);
             *fitness = neighbor_fitness;
-        }
+        
+        } self.initial_temperature *= self.cooling_rate;
     }
 }
 
@@ -130,16 +136,18 @@ impl Metaheuristic for SimulatedAnnealing {
                 instance,
                 evaluation,
             );
-        } self.initial_temperature *= self.cooling_rate;
+        }
     }
+
 
     fn get_metrics(&self) -> HashMap<String, f32> {
         let mut metrics = HashMap::new();
         metrics.insert("temperature".to_string(), self.initial_temperature);
+        metrics.insert("acceptance_probability_avg".to_string(), self.acceptance_probability_avg);
         metrics
     }
 
     fn get_metric_names(&self) -> Vec<String> {
-        vec!["temperature".to_string()]
+        vec!["temperature".to_string(), "acceptance_probability_avg".to_string()]
     }
 }

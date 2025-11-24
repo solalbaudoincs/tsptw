@@ -4,6 +4,7 @@ use rayon::prelude::*;
 use crate::gui::solver::{Solver, ConcreteSolver};
 use crate::initializer::{Initializer, RandomInitializer};
 use crate::algorithms::SimulatedAnnealing;
+use crate::algorithms::{GeneticAlgorithm, CrossoverType, CompetitionType, HillClimbing, ACO};
 use crate::neighborhood::Swap;
 use crate::eval::{Weighted, Evaluation};
 use crate::shared::{Instance, GraphInstance, Solution};
@@ -12,6 +13,9 @@ use crate::io::io_instance::load_instance;
 #[derive(PartialEq, Clone, Copy)]
 pub enum AlgoType {
     SimulatedAnnealing,
+    GeneticAlgorithm,
+    HillClimbing,
+    AntColonyOptimization,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -221,11 +225,11 @@ impl AppState {
             self.next_run_id += 1;
 
             let mut initializer = RandomInitializer {};
-            let population: Vec<Solution> = vec![initializer.initialize(instance)];
             
             match self.algo_type {
                 AlgoType::SimulatedAnnealing => {
                     let two_opt_rate: f32 = 0.1;
+                    let population: Vec<Solution> = vec![initializer.initialize(instance)];
                     let algo = SimulatedAnnealing::new(
                         self.sa_temp, self.sa_cooling, 0.001, two_opt_rate, instance
                     );
@@ -236,7 +240,7 @@ impl AppState {
                     let fitnesses = vec![initial_fitness];
 
                     let neighbor = Swap::new();
-                    
+
                     let solver = ConcreteSolver::new(
                         algo,
                         eval,
@@ -248,6 +252,112 @@ impl AppState {
                     run.metric_names = Solver::get_metric_names(&solver);
                     run.solver = Some(Box::new(solver));
                 }
+                AlgoType::GeneticAlgorithm => {
+                    // Build an initial population for the GA
+                    let pop_size: usize = 16;
+                    let mut population: Vec<Solution> = Vec::with_capacity(pop_size);
+                    for _ in 0..pop_size {
+                        population.push(initializer.initialize(instance));
+                    }
+
+                    // GA parameters (defaults — tweak as desired)
+                    let crossover_rate: f32 = 0.8;
+                    let crossover_type = CrossoverType::OX;
+                    let elitism_rate: f32 = 0.02;
+                    let comp_participation_rate: f32 = 0.1;
+                    let comp_type = CompetitionType::Tournament;
+
+                    let algo = GeneticAlgorithm::new(
+                        instance,
+                        crossover_rate,
+                        crossover_type,
+                        elitism_rate,
+                        comp_participation_rate,
+                        comp_type,
+                        pop_size,
+                    );
+
+                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                    let fitnesses: Vec<f32> = population.iter().map(|s| eval.score(instance, s)).collect();
+
+                    let neighbor = Swap::new();
+
+                    let solver = ConcreteSolver::new(
+                        algo,
+                        eval,
+                        neighbor,
+                        instance.clone(),
+                        population,
+                        fitnesses,
+                    );
+                    run.metric_names = Solver::get_metric_names(&solver);
+                    run.solver = Some(Box::new(solver));
+                }
+                AlgoType::HillClimbing => {
+                    // Single-solution hill-climbing
+                    let population: Vec<Solution> = vec![initializer.initialize(instance)];
+                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                    let initial_fitness = eval.score(instance, &population[0]);
+                    let fitnesses = vec![initial_fitness];
+
+                    let nb_neighbors: usize = 20;
+                    let two_opt_rate: f32 = 0.1;
+                    let algo = HillClimbing::new(nb_neighbors, two_opt_rate, instance);
+
+                    let neighbor = Swap::new();
+
+                    let solver = ConcreteSolver::new(
+                        algo,
+                        eval,
+                        neighbor,
+                        instance.clone(),
+                        population,
+                        fitnesses,
+                    );
+                    run.metric_names = Solver::get_metric_names(&solver);
+                    run.solver = Some(Box::new(solver));
+                }
+                AlgoType::AntColonyOptimization => {
+                    // ACO with multiple ants (population = number of ants)
+                    let pop_size: usize = 16;
+                    let mut population: Vec<Solution> = Vec::with_capacity(pop_size);
+                    for _ in 0..pop_size {
+                        population.push(initializer.initialize(instance));
+                    }
+
+                    // ACO parameters (defaults)
+                    let evaporation_rate: f32 = 0.1;
+                    let alpha: f32 = 1.0;
+                    let beta: f32 = 2.0;
+                    let pheromone_deposit: f32 = 1.0;
+                    let max_iterations: usize = self.max_steps;
+
+                    let algo = ACO::new(
+                        instance,
+                        evaporation_rate,
+                        alpha,
+                        beta,
+                        max_iterations,
+                        pheromone_deposit,
+                    );
+
+                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                    let fitnesses: Vec<f32> = population.iter().map(|s| eval.score(instance, s)).collect();
+
+                    let neighbor = Swap::new();
+
+                    let solver = ConcreteSolver::new(
+                        algo,
+                        eval,
+                        neighbor,
+                        instance.clone(),
+                        population,
+                        fitnesses,
+                    );
+                    run.metric_names = Solver::get_metric_names(&solver);
+                    run.solver = Some(Box::new(solver));
+                }
+                
             }
             run.is_running = true;
             self.runs.push(run);
