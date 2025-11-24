@@ -12,19 +12,29 @@ pub enum CompetitionType {
     Roulette,
 }
 
-pub enum CrossType {
+pub enum CrossoverType {
     PMX,
     OX
 }
 
+/// Algorithme génétique pour le TSP, avec divers types de crossover et de sélection, implémenté de manière efficace avec
+/// des buffers réutilisés pour minimiser les allocations mémoire.
+/// 
+/// Paramètres :
+/// - `crossover_rate`: taux de crossover
+/// - `crossover_type`: type de crossover (PMX, OX)
+/// - `elitism_rate`: taux d'élitisme
+/// - `competition_participation_rate`: taux de participation à chaque compétition pour l'étape de sélection
+/// - `competition_type`: type de compétition (tournoi, roulette)
 pub struct GeneticAlgorithm{
 
-    // Paramètres de l'algorithme
+    /// taille de l'instance solution
     solution_size: usize,
+
     crossover_rate: f32,
     competition_participation_count: usize,
     elitism_count: usize,
-    crossover_type: CrossType,
+    crossover_type: CrossoverType,
     competition_type: CompetitionType,
     
     rng: StdRng,
@@ -39,20 +49,33 @@ pub struct GeneticAlgorithm{
     child2_mapping_buffer: Vec<u32>,
 }
 
+
 impl GeneticAlgorithm {
+
+    /// Crée un nouvel algorithme génétique avec les paramètres donnés.
+    /// 
+    /// Paramètres :
+    /// - `instance`: l'instance du problème à résoudre.
+    /// - `crossover_type`: le type de crossover à utiliser dans l'algorithme génétique.
+    /// - `elitism_rate`: le taux d'élitisme dans l'algorithme génétique.
+    /// - `crossover_rate`: le taux de crossover dans l'algorithme génétique.
+    /// - `mutation_rate`: le taux de mutation dans l'algorithme génétique.
+    /// - `competition_participation_rate`: le taux de participation à la compétition dans l'algorithme génétique.
+    /// - `competition_type`: le type de compétition (tournoi, roulette) dans l'algorithme génétique.
+    /// - `population_size`: la taille de la population dans l'algorithme génétique.
     pub fn new(
         instance: &Instance,
         crossover_rate: f32,
-        crossover_type: CrossType,
+        crossover_type: CrossoverType,
         elitism_rate: f32,
         competition_participation_rate: f32,
         competition_type: CompetitionType,
-        max_population_size: usize,
+        population_size: usize,
     ) -> Self {
 
         let solution_size = instance.size();
-        let elitism_count = (elitism_rate * max_population_size as f32) as usize;
-        let competition_participation_count = (competition_participation_rate * max_population_size as f32) as usize;
+        let elitism_count = (elitism_rate * population_size as f32) as usize;
+        let competition_participation_count = (competition_participation_rate * population_size as f32) as usize;
         
         GeneticAlgorithm {
             solution_size,
@@ -65,8 +88,8 @@ impl GeneticAlgorithm {
 
             competition_type,
             participants_buffer: Vec::with_capacity(competition_participation_count),
-            best_idx_buffer: Vec::with_capacity(max_population_size),
-            new_population_buffer: Vec::with_capacity(max_population_size),
+            best_idx_buffer: Vec::with_capacity(population_size),
+            new_population_buffer: Vec::with_capacity(population_size),
             child1_visited_buffer: vec![false; solution_size],
             child2_visited_buffer: vec![false; solution_size],
             child1_mapping_buffer: vec![u32::MAX; solution_size],
@@ -76,6 +99,8 @@ impl GeneticAlgorithm {
 }
 
 impl GeneticAlgorithm {
+
+    /// Sélection par tournoi entre les participants sélectionnés
     fn tournament_selection(&mut self, fitness: &[Fitness]) -> usize {
 
         // Tournament selection logic
@@ -92,6 +117,7 @@ impl GeneticAlgorithm {
         participant_best_idx
     }
 
+    /// Sélection proportionnelle à la fitness (roulette wheel selection)
     fn roulette_selection(&mut self, fitness: &[Fitness]) -> usize {
 
         // Roulette wheel selection logic
@@ -113,7 +139,7 @@ impl GeneticAlgorithm {
         .unwrap()
     }
 
-
+    /// Sélectionne les meilleurs individus de la population et stocke leurs indices dans best_idx_buffer
     fn select_best(&mut self, fitness: &[Fitness]) -> () {
         
         // Initialize indices
@@ -136,6 +162,8 @@ impl GeneticAlgorithm {
         // No need for additional sorting since select_nth_unstable partitions correctly
     }
 
+
+    /// Sélectionne les participants pour la compétition de manière aléatoire sans remise
     fn select_particiants(&mut self, population: &[Solution]) -> () {
 
         // Selection aléatoire uniforme avec roulette simple
@@ -252,10 +280,11 @@ impl GeneticAlgorithm {
         child2_route: &mut Solution,
         child1_mapping_buffer: &mut Vec<u32>,
         child2_mapping_buffer: &mut Vec<u32>,
-        child1_visited_buffer: &mut Vec<bool>,
-        child2_visited_buffer: &mut Vec<bool>,
         rng: &mut StdRng,
     ) -> () {
+
+        child1_mapping_buffer.fill(u32::MAX);
+        child2_mapping_buffer.fill(u32::MAX);
 
         // PMX crossover logic
         let size = parent1.len();
@@ -270,10 +299,7 @@ impl GeneticAlgorithm {
             
             child1_route[i] = val1;
             child2_route[i] = val2;
-            
-            child1_visited_buffer[val1 as usize] = true;
-            child2_visited_buffer[val2 as usize] = true;
-            
+
             // Créer le mapping: dans child1, val1 mappe vers val2 (et vice versa)
             child1_mapping_buffer[val1 as usize] = val2;
             child2_mapping_buffer[val2 as usize] = val1;
@@ -288,21 +314,21 @@ impl GeneticAlgorithm {
 
             // Pour child1, prendre de parent2
             let mut val2 = parent2[i];
-            if child1_visited_buffer[val2 as usize] {
+            if child1_mapping_buffer[val2 as usize] != u32::MAX {
                 // Suivre le mapping jusqu'à trouver une valeur non utilisée
                 val2 = Self::pmx_resolve_mapping(&child1_mapping_buffer, val2);
             }
             child1_route[i] = val2;
-            child1_visited_buffer[val2 as usize] = true;
+            child1_mapping_buffer[val2 as usize] = val2;
             
             // Pour child2, prendre de parent1
             let mut val1 = parent1[i];
-            if child2_visited_buffer[val1 as usize] {
+            if child2_mapping_buffer[val1 as usize] != u32::MAX {
                 // Suivre le mapping jusqu'à trouver une valeur non utilisée
                 val1 = Self::pmx_resolve_mapping(&child2_mapping_buffer, val1);
             }
             child2_route[i] = val1;
-            child2_visited_buffer[val1 as usize] = true;
+            child2_mapping_buffer[val1 as usize] = val1;
         }
     }
 }   
@@ -316,7 +342,7 @@ impl GeneticAlgorithm {
         let child2_route = &mut right_pop_buffer[0];
 
         match self.crossover_type {
-            CrossType::OX => {
+            CrossoverType::OX => {
                 Self::ox_crossover(
                     parent1, 
                     parent2, 
@@ -327,7 +353,7 @@ impl GeneticAlgorithm {
                     &mut self.rng,
                 )
             }
-            CrossType::PMX => {
+            CrossoverType::PMX => {
                 Self::pmx_crossover(
                     parent1, 
                     parent2, 
@@ -335,8 +361,6 @@ impl GeneticAlgorithm {
                     child2_route,
                     &mut self.child1_mapping_buffer,
                     &mut self.child2_mapping_buffer,
-                    &mut self.child1_visited_buffer,
-                    &mut self.child2_visited_buffer,
                     &mut self.rng,
                 )
             }
@@ -404,5 +428,11 @@ impl Metaheuristic for GeneticAlgorithm {
         for i in self.elitism_count..pop_size {
             fitness[i] = evaluation.score(instance, &population[i]);
         }
+    }
+    fn get_metrics(&self) -> std::collections::HashMap<String, f32> {
+        std::collections::HashMap::new()
+    }
+    fn get_metric_names(&self) -> Vec<String> {
+        vec![]
     }
 }

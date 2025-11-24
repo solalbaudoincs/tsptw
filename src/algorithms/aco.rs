@@ -3,6 +3,7 @@ use crate::eval;
 
 use super::Metaheuristic;
 
+use std::collections::HashMap;
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
 use ndarray::Array2;
@@ -176,5 +177,16 @@ impl Metaheuristic for ACO {
                 self.pheromone_matrix[[to, from]] += pheromone_amount;
             }
         }
+    }
+
+    fn get_metrics(&self) -> HashMap<String, f32> {
+        let mut metrics = HashMap::new();
+        let avg_pheromone: f32 = self.pheromone_matrix.sum() / (self.pheromone_matrix.len() as f32);
+        metrics.insert("Average Pheromone".to_string(), avg_pheromone);
+        metrics
+    }
+
+    fn get_metric_names(&self) -> Vec<String> {
+        vec!["Average Pheromone".to_string()]
     }
 }

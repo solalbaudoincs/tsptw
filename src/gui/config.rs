@@ -11,6 +11,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     ui.separator();
     ui.label("Algorithm");
     ui.radio_value(&mut state.algo_type, AlgoType::SimulatedAnnealing, "Simulated Annealing");
+    ui.radio_value(&mut state.algo_type, AlgoType::GeneticAlgorithm, "Genetic Algorithm");
+    ui.radio_value(&mut state.algo_type, AlgoType::HillClimbing, "Hill Climbing");
+    ui.radio_value(&mut state.algo_type, AlgoType::AntColonyOptimization, "Ant Colony Optimization");
     
     if state.algo_type == AlgoType::SimulatedAnnealing {
         ui.add(egui::Slider::new(&mut state.sa_temp, 1.0..=10000.0).text("Initial Temp"));

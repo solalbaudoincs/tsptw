@@ -8,6 +8,7 @@ use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
+/// Algorithme de Hill Climbing pour le TSPTW, utilisant des voisins générés par des opérations de swap et de 2-opt.
 pub struct HillClimbing {
     nb_neighbors: usize,
     neighbor_buffer: Solution,
@@ -71,5 +72,12 @@ impl Metaheuristic for HillClimbing {
                 evaluation,
             );
         }
+    }
+
+    fn get_metrics(&self) -> std::collections::HashMap<String, f32> {
+        std::collections::HashMap::new()
+    }
+    fn get_metric_names(&self) -> Vec<String> {
+        vec![]
     }
 }
