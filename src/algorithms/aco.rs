@@ -1,4 +1,4 @@
-use crate::shared::{Solution, Instance, Fitness};
+use crate::shared::{Solution, Instance, Fitness, Ville};
 use crate::eval;
 
 use super::Metaheuristic;
@@ -9,7 +9,6 @@ use ndarray::Array2;
 
 pub struct ACO{
     // Paramètres de l'algorithme
-    num_ants: usize,
     evaporation_rate: f32,
     alpha: f32,
     beta: f32,
@@ -28,6 +27,7 @@ pub struct ACO{
 
 impl ACO {
     pub fn new(
+
         instance: &Instance,
         evaporation_rate: f32,
         alpha: f32,
@@ -36,13 +36,11 @@ impl ACO {
         pheromone_deposit: f32
     ) -> Self {
 
-        let num_ants = instance.size();
         let num_nodes = instance.size();
         let eps = 1e-6;
         let pheromone_matrix = 1.0/(instance.distance_matrix.clone() + eps);
 
         ACO{
-            num_ants,
             evaporation_rate,
             alpha,
             beta,
@@ -59,7 +57,10 @@ impl ACO {
 
 
 impl ACO {
-    fn construct_solution(&mut self, instance: &Instance) -> &Solution {
+    fn construct_solution(
+        &mut self, 
+        instance: &Instance
+    ) -> () {
         let num_nodes = instance.size();
         
         // Réinitialiser les buffers
@@ -71,53 +72,75 @@ impl ACO {
         self.visited_buffer[start_node as usize] = true;
 
         while self.solution_buffer.len() < num_nodes {
+
             let current_node = *self.solution_buffer.last().unwrap();
-            let next_node = self.compute_next_node_bfs(current_node, instance);
+
+            let next_node = Self::compute_next_node_bfs(
+                current_node, 
+                num_nodes,
+                &instance.distance_matrix,
+                &self.pheromone_matrix,
+                self.alpha,
+                self.beta,
+                &mut self.visited_buffer,
+                &mut self.desirability_buffer,
+                &mut self.unvisited_nodes_buffer,
+                &mut self.rng,
+            );
+
             self.solution_buffer.push(next_node);
             self.visited_buffer[next_node as usize] = true;
         }
-
-        &self.solution_buffer
     }
     
-    fn compute_next_node_bfs(&mut self, current_node: u32, instance: &Instance) -> u32 {
-        let dist_matrix = &instance.distance_matrix;
-        let num_nodes = self.visited_buffer.len();
+    fn compute_next_node_bfs(
+        current_node: Ville, 
+        num_nodes: usize,
+        distance_matrix: &Array2<f32>,
+        pheromone_matrix: &Array2<f32>,
+        alpha: f32,
+        beta: f32,
+        visited_buffer: &mut Vec<bool>,
+        desirability_buffer: &mut Vec<f32>,
+        unvisited_nodes_buffer: &mut Vec<Ville>,
+        rng: &mut StdRng,
+    ) -> Ville {
         
         // Réinitialiser les buffers
-        self.desirability_buffer.clear();
-        self.unvisited_nodes_buffer.clear();
+        desirability_buffer.clear();
+        unvisited_nodes_buffer.clear();
         
         // Calculer la désirabilité pour les nœuds non visités
         for node in 0..num_nodes {
-            if !self.visited_buffer[node] {
-                let pheromone = self.pheromone_matrix[[current_node as usize, node]];
-                let distance = dist_matrix[[current_node as usize, node]];
-                let value = pheromone.powf(self.alpha) * (1.0 / (distance + 1e-6)).powf(self.beta);
-                self.desirability_buffer.push(value);
-                self.unvisited_nodes_buffer.push(node as u32);
+
+            if !visited_buffer[node] {
+                let pheromone = pheromone_matrix[[current_node as usize, node]];
+                let distance = distance_matrix[[current_node as usize, node]];
+                let value = pheromone.powf(alpha) * (1.0 / (distance + 1e-6)).powf(beta);
+                desirability_buffer.push(value);
+                unvisited_nodes_buffer.push(node as Ville);
             }
         }
 
-        if self.unvisited_nodes_buffer.is_empty() {
+        if unvisited_nodes_buffer.is_empty() {
             return current_node;
         }
 
-        let total: f32 = self.desirability_buffer.iter().sum();
+        let total: f32 = desirability_buffer.iter().sum();
         if total <= 0.0 {
-            let idx = self.rng.random_range(0..self.unvisited_nodes_buffer.len());
-            return self.unvisited_nodes_buffer[idx];
+            let idx = rng.random_range(0..unvisited_nodes_buffer.len());
+            return unvisited_nodes_buffer[idx];
         }
 
         // Sélection par roulette wheel
-        let mut pick = self.rng.random_range(0.0..total);
-        for (idx, &value) in self.desirability_buffer.iter().enumerate() {
+        let mut pick = rng.random_range(0.0..total);
+        for (idx, &value) in desirability_buffer.iter().enumerate() {
             pick -= value;
             if pick <= 0.0 {
-                return self.unvisited_nodes_buffer[idx];
+                return unvisited_nodes_buffer[idx];
             }
         }
-        *self.unvisited_nodes_buffer
+        *unvisited_nodes_buffer
         .last()
         .unwrap()
     }
@@ -136,11 +159,12 @@ impl Metaheuristic for ACO {
         self.pheromone_matrix *= 1.0 - self.evaporation_rate;
 
         // Construire les solutions pour chaque fourmi
-        for i in 0..self.num_ants.min(population.len()) {
-            let solution = self.construct_solution(instance);
-            let fit = metric_fn.score(instance, solution);
+        for i in 0..population.len() {
+
+            self.construct_solution(instance);
+            let fit = metric_fn.score(instance, &self.solution_buffer);
             
-            population[i].clone_from_slice(solution);
+            population[i].clone_from_slice(&self.solution_buffer[..]);
             fitness[i] = fit;
 
             // Dépôt de phéromones sur le chemin parcouru
