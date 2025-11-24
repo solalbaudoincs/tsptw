@@ -11,13 +11,14 @@ use rand::SeedableRng;
 pub struct SimulatedAnnealing {
     initial_temperature: f32,
     cooling_rate: f32,
+    avg_acceptance_rate: f32,
     stopping_temperature: f32,
     rng: rand::rngs::StdRng,
 }
 
 impl SimulatedAnnealing {
     fn acceptance_probability(
-        &self,
+        &mut self,
         current_fitness: f32,
         neighbor_fitness: f32,
         temperature: f32,
@@ -25,7 +26,9 @@ impl SimulatedAnnealing {
         if neighbor_fitness < current_fitness {
             1.0
         } else {
-            ((current_fitness - neighbor_fitness) / temperature).exp()
+            let prb = ((current_fitness - neighbor_fitness) / temperature).exp();
+            self.avg_acceptance_rate = 0.9 * self.avg_acceptance_rate + 0.1 * prb;
+            prb
         }
     }
     pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32) -> Self {
@@ -34,6 +37,7 @@ impl SimulatedAnnealing {
             cooling_rate,
             stopping_temperature,
             rng: rand::rngs::StdRng::from_os_rng(),
+            avg_acceptance_rate: 0.5,
         }
     }
     pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
@@ -112,10 +116,11 @@ impl Metaheuristic for SimulatedAnnealing {
     fn get_metrics(&self) -> HashMap<String, f32> {
         let mut metrics = HashMap::new();
         metrics.insert("temperature".to_string(), self.initial_temperature);
+        metrics.insert("avg_acceptance_rate".to_string(), self.avg_acceptance_rate);
         metrics
     }
 
     fn get_metric_names(&self) -> Vec<String> {
-        vec!["temperature".to_string()]
+        vec!["temperature".to_string(), "avg_acceptance_rate".to_string()]
     }
 }
