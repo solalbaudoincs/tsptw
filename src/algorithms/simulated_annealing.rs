@@ -1,21 +1,40 @@
 use super::Metaheuristic;
-use crate::neighbourhood::NeighborFn;
-use crate::problem::evaluation::{Evaluation, Fitness, Fitnesses};
-use crate::problem::{Instance, Population, Solution};
-use crate::initializer::{RandomInitializer, Initializer};
-use std::collections::HashMap;
 
+use crate::neighborhood::NeighborFn;
+use crate::initializer::{RandomInitializer, Initializer};
+use crate::shared::{Fitness, Instance, Solution};
+use crate::eval::Evaluation;
+
+use std::collections::HashMap;
 use rand::Rng;
+use rand::rngs::StdRng;
 use rand::SeedableRng;
 
 pub struct SimulatedAnnealing {
     initial_temperature: f32,
     cooling_rate: f32,
     stopping_temperature: f32,
-    rng: rand::rngs::StdRng,
+    rng: StdRng,
+
+    neighbor_buffer: Solution,
 }
 
 impl SimulatedAnnealing {
+
+    
+    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
+
+            let solution_size = instance.size();
+
+            SimulatedAnnealing {
+            initial_temperature,
+            cooling_rate,
+            stopping_temperature,
+            rng: StdRng::from_os_rng(),
+            neighbor_buffer: vec![0; solution_size],
+        }
+    }
+
     fn acceptance_probability(
         &self,
         current_fitness: f32,
@@ -28,18 +47,12 @@ impl SimulatedAnnealing {
             ((current_fitness - neighbor_fitness) / temperature).exp()
         }
     }
-    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32) -> Self {
-            SimulatedAnnealing {
-            initial_temperature,
-            cooling_rate,
-            stopping_temperature,
-            rng: rand::rngs::StdRng::from_os_rng(),
-        }
-    }
+    
     pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
+        &mut self,
         instance: &Instance,
         evaluation: &E,
-        neighbourhood: &mut N,
+        neighborhood: &mut N,
         sample_size: usize,
         desired_acceptance_rate: f32,
     ) -> f32 {
@@ -50,13 +63,15 @@ impl SimulatedAnnealing {
         let mut current_fitness = evaluation.score(instance, &current_solution);
 
         for _ in 0..sample_size {
-            let neighbor = neighbourhood.get_neighbor(&current_solution);
-            let neighbor_fitness = evaluation.score(instance, &neighbor);
+
+            // Generate neighbor and puts it in buffer
+            neighborhood.get_neighbor(&current_solution, &mut self.neighbor_buffer);
+            let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
 
             let delta_energy = neighbor_fitness - current_fitness;
             deltas.push(delta_energy);
 
-            current_solution = neighbor;
+            current_solution = self.neighbor_buffer.clone();
             current_fitness = neighbor_fitness;
         }
         // Calculate average increase in energy from sampled uphill moves
@@ -74,15 +89,18 @@ impl SimulatedAnnealing {
         solution: &mut Solution,
         fitness: &mut Fitness,
         instance: &Instance,
-        neighbourhood: &mut N,
+        neighborhood: &mut N,
         evaluation: &E,
     ) -> () {
-        let neighbor = neighbourhood.get_neighbor(&solution);
-        let neighbor_fitness = evaluation.score(instance, &neighbor);
-            let rand = self.rng.random_range(0.0f32..1.0f32);
-            let p: f32 = self.acceptance_probability(*fitness , neighbor_fitness, self.initial_temperature);
+
+        // Generate neighbor and puts it in buffer
+        neighborhood.get_neighbor(&solution, &mut self.neighbor_buffer);
+
+        let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
+            let rand = self.rng.random_range(0.0..1.0);
+            let p = self.acceptance_probability(*fitness , neighbor_fitness, self.initial_temperature);
         if rand < p {
-            *solution = neighbor;
+            solution.copy_from_slice(&self.neighbor_buffer);
             *fitness = neighbor_fitness;
         }
         self.initial_temperature *= self.cooling_rate;
@@ -92,9 +110,9 @@ impl SimulatedAnnealing {
 impl Metaheuristic for SimulatedAnnealing {
     fn step<Eval: Evaluation, N: NeighborFn>(
         &mut self,
-        population: &mut Population,
-        fitness: &mut Fitnesses,
-        neighbourhood: &mut N,
+        population: &mut [Solution],
+        fitness: &mut [Fitness],
+        neighborhood: &mut N,
         instance: &Instance,
         evaluation: &Eval,
     ) {
@@ -103,7 +121,7 @@ impl Metaheuristic for SimulatedAnnealing {
                 &mut population[i],
                 &mut fitness[i],
                 instance,
-                neighbourhood,
+                neighborhood,
                 evaluation,
             );
         }

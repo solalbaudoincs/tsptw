@@ -16,6 +16,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState, run_idx: usize) {
         
         let run = &mut state.runs[run_idx];
         let instance = &state.instance;
+        let graph_instance = &state.graph_instance;
         let log_scale = &mut state.violation_log_scale;
         let left_col_ratio = &mut state.left_col_ratio;
         let right_top_ratio = &mut state.right_top_ratio;
@@ -33,7 +34,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState, run_idx: usize) {
         ui.horizontal(|ui| {
             // Left column (Route)
             ui.allocate_ui_with_layout(Vec2::new(left_w, available.y), Layout::top_down(Align::Min), |ui| {
-                tabs::route::show(ui, run, instance);
+                tabs::route::show(ui, run, graph_instance);
             });
 
             // Vertical divider (draggable)

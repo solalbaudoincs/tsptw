@@ -16,4 +16,5 @@ eframe = "0.31.0"
 egui = "0.31.0"
 egui_plot = "0.31.0"
 chrono = "0.4"
+ndarray = "0.17.1"
 

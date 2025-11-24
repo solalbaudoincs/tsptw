@@ -1,9 +1,9 @@
 use std::cmp::Ordering;
 
 use super::Evaluation;
-use crate::problem::{instance::Instance, solution::Solution};
-
 use super::utils::run_solution;
+
+use crate::shared::{Instance, Solution};
 
 pub struct Lexicographic {
     distance_first: bool,
@@ -17,13 +17,14 @@ impl Lexicographic {
 
 impl Evaluation for Lexicographic {
     fn compare(&self, problem: &Instance, a: &Solution, b: &Solution) -> Ordering {
-        let (a_distance, a_violation) = run_solution(problem, a);
-        let (b_distance, b_violation) = run_solution(problem, b);
+        
+        let eval_a = run_solution(problem, a);
+        let eval_b = run_solution(problem, b);
 
         let ((a_primary, a_secondary), (b_primary, b_secondary)) = if self.distance_first {
-            ((a_distance, a_violation), (b_distance, b_violation))
+            ((eval_a.total_distance, eval_a.violation_time), (eval_b.total_distance, eval_b.violation_time))
         } else {
-            ((a_violation, a_distance), (b_violation, b_distance))
+            ((eval_a.violation_time, eval_a.total_distance), (eval_b.violation_time, eval_b.total_distance))
         };
 
         if a_primary < b_primary {
@@ -38,8 +39,10 @@ impl Evaluation for Lexicographic {
             Ordering::Equal
         }
     }
+
     fn score(&self, problem: &Instance, solution: &Solution) -> f32 {
-        let (distance, violation) = run_solution(problem, solution);
+        let eval = run_solution(problem, solution);
+        let (distance, violation) = (eval.total_distance, eval.violation_time);
         if violation > 0.0f32 { violation } else { distance }
     }
 }

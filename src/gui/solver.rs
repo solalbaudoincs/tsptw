@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use crate::algorithms::Metaheuristic;
-use crate::neighbourhood::NeighborFn;
-use crate::problem::{Evaluation, Instance, Population};
-use crate::problem::evaluation::Fitnesses;
-use crate::problem::evaluation::utils::run_solution;
+use crate::neighborhood::NeighborFn;
+
+use crate::shared::{Instance, Solution, Fitness};
+use crate::eval::{Evaluation, utils};
+
 
 pub trait Solver: Send + Sync {
     fn step(&mut self);
@@ -18,8 +19,8 @@ pub struct ConcreteSolver<Algo, Eval, N> {
     pub eval: Eval,
     pub neighbor: N,
     pub instance: Instance,
-    pub population: Population,
-    pub fitnesses: Fitnesses,
+    pub population: Vec<Solution>,
+    pub fitnesses: Vec<Fitness>,
     pub iteration: usize,
 }
 
@@ -34,8 +35,8 @@ where
         eval: Eval,
         neighbor: N,
         instance: Instance,
-        population: Population,
-        fitnesses: Fitnesses,
+        population: Vec<Solution>,
+        fitnesses: Vec<Fitness>,
     ) -> Self {
         Self {
             algo,
@@ -87,7 +88,8 @@ where
         }
         
         let best_sol = &self.population[best_idx];
-        let (dist, viol) = run_solution(&self.instance, best_sol);
+        let eval = utils::run_solution(&self.instance, best_sol);
+        let (dist, viol) = (eval.total_distance, eval.violation_time);
         
         Some((best_sol.clone(), dist as f32, viol as f32))
     }

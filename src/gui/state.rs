@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use rayon::prelude::*;
-use crate::problem::Instance;
+
 use crate::gui::solver::{Solver, ConcreteSolver};
-use crate::problem::instance::io::load_instance;
 use crate::initializer::{Initializer, RandomInitializer};
-use crate::problem::{Population, evaluation::{Weighted, Evaluation}};
 use crate::algorithms::SimulatedAnnealing;
-use crate::neighbourhood::Swap;
+use crate::neighborhood::Swap;
+use crate::eval::{Weighted, Evaluation};
+use crate::shared::{Instance, GraphInstance, Solution};
+use crate::io::io_instance::load_instance;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum AlgoType {
@@ -103,8 +104,8 @@ impl RunState {
             node_idx: start_node_idx,
             arrival_time: 0.0,
             wait_time: 0.0,
-            window_start: instance.graph[start_node_idx].wstart,
-            window_end: instance.graph[start_node_idx].wend,
+            window_start: instance.windows[start_node_idx].wstart,
+            window_end: instance.windows[start_node_idx].wend,
             violation: 0.0,
         });
 
@@ -113,11 +114,11 @@ impl RunState {
             let next_i = (i + 1) % self.current_solution_path.len();
             let to_idx = self.current_solution_path[next_i] as usize;
             
-            let travel_time = instance.distance_matrix[from_idx][to_idx];
+            let travel_time = instance.distance_matrix[[from_idx, to_idx]];
             let arrival_time = current_time + travel_time;
             
-            let wstart = instance.graph[to_idx].wstart;
-            let wend = instance.graph[to_idx].wend;
+            let wstart = instance.windows[to_idx].wstart;
+            let wend = instance.windows[to_idx].wend;
             
             let mut wait_time = 0.0;
             let mut violation = 0.0;
@@ -151,6 +152,7 @@ impl RunState {
 pub struct AppState {
     pub instance_path: String,
     pub instance: Option<Instance>,
+    pub graph_instance: Option<GraphInstance>,
     
     pub algo_type: AlgoType,
     pub sa_temp: f32,
@@ -177,6 +179,7 @@ impl AppState {
         Self {
             instance_path: "data/inst1".to_string(),
             instance: None,
+            graph_instance: None,
             algo_type: AlgoType::SimulatedAnnealing,
             sa_temp: 1000.0,
             sa_cooling: 0.9995,
@@ -196,9 +199,17 @@ impl AppState {
 
     pub fn load_instance(&mut self) {
         if std::path::Path::new(&self.instance_path).exists() {
-            self.instance = Some(load_instance(&self.instance_path));
-            self.runs.clear();
-            self.selected_run_index = None;
+            match load_instance(&self.instance_path) {
+                Ok((instance, graph_instance)) => {
+                    self.instance = Some(instance);
+                    self.graph_instance = Some(graph_instance);
+                    self.runs.clear();
+                    self.selected_run_index = None;
+                }
+                Err(e) => {
+                    eprintln!("Error loading instance: {}", e);
+                }
+            }
         } else {
             eprintln!("Instance not found: {}", self.instance_path);
         }
@@ -210,11 +221,11 @@ impl AppState {
             self.next_run_id += 1;
 
             let mut initializer = RandomInitializer {};
-            let population: Population = vec![initializer.initialize(instance)];
+            let population: Vec<Solution> = vec![initializer.initialize(instance)];
             
             match self.algo_type {
                 AlgoType::SimulatedAnnealing => {
-                    let algo = SimulatedAnnealing::new(self.sa_temp, self.sa_cooling, 0.001);
+                    let algo = SimulatedAnnealing::new(self.sa_temp, self.sa_cooling, 0.001, instance);
                     let eval = Weighted { violation_coefficient: self.violation_coefficient };
                     
                     // Calculate initial fitness
@@ -231,7 +242,7 @@ impl AppState {
                         population,
                         fitnesses,
                     );
-                    run.metric_names = solver.get_metric_names();
+                    run.metric_names = Solver::get_metric_names(&solver);
                     run.solver = Some(Box::new(solver));
                 }
             }

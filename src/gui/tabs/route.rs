@@ -1,20 +1,21 @@
 use eframe::egui;
 use egui_plot::{Arrows, Line, Plot, PlotPoint, PlotPoints, Points, Text};
-use crate::gui::state::RunState;
-use crate::problem::Instance;
 
-pub fn show(ui: &mut egui::Ui, run_state: &RunState, instance: &Option<Instance>) {
+use crate::gui::state::RunState;
+use crate::shared::GraphInstance;
+
+pub fn show(ui: &mut egui::Ui, run_state: &RunState, graph_instance: &Option<GraphInstance>) {
     ui.push_id("route_plot", |ui| {
         Plot::new("TSP Route")
             .data_aspect(1.0)
             .show(ui, |plot_ui| {
-                if let Some(instance) = instance {
+                if let Some(graph_instance) = graph_instance {
                     // Draw cities
-                    let points: PlotPoints = instance.graph.iter().map(|n| [n.x as f64, n.y as f64]).collect();
+                    let points: PlotPoints = graph_instance.graph.iter().map(|n| [n.x as f64, n.y as f64]).collect();
                     plot_ui.points(Points::new(points).radius(8.0).color(egui::Color32::RED));
                     
                     // Draw node IDs
-                    for (i, n) in instance.graph.iter().enumerate() {
+                    for (i, n) in graph_instance.graph.iter().enumerate() {
                         plot_ui.text(Text::new(
                             PlotPoint::new(n.x as f64, n.y as f64 + 1.0 ), 
                             egui::RichText::new(i.to_string()).size(16.0).strong()
@@ -32,8 +33,8 @@ pub fn show(ui: &mut egui::Ui, run_state: &RunState, instance: &Option<Instance>
                             let next_i = (i + 1) % run_state.current_solution_path.len();
                             let to_idx = run_state.current_solution_path[next_i] as usize;
                             
-                            let n1 = &instance.graph[from_idx];
-                            let n2 = &instance.graph[to_idx];
+                            let n1 = &graph_instance.graph[from_idx];
+                            let n2 = &graph_instance.graph[to_idx];
                             
                             line_points.push([n1.x as f64, n1.y as f64]);
 
@@ -67,7 +68,7 @@ pub fn show(ui: &mut egui::Ui, run_state: &RunState, instance: &Option<Instance>
                         
                         // Close loop for line
                         if let Some(first) = run_state.current_solution_path.first() {
-                            let n = &instance.graph[*first as usize];
+                            let n = &graph_instance.graph[*first as usize];
                             line_points.push([n.x as f64, n.y as f64]);
                         }
                         

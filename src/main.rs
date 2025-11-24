@@ -1,16 +1,13 @@
 
 use clap::Parser;
 use mh_tsptw::algorithms::SimulatedAnnealing;
-use mh_tsptw::neighbourhood::{Swap, TwoOpt, NeighborFnMixer};
-use mh_tsptw::problem::{
-    Evaluation,
-    evaluation::{Weighted},
-    instance::{Instance, io::load_instance},
-    solution::{Population, io::load_solution},
-};
+use mh_tsptw::neighborhood::Swap;
+use mh_tsptw::eval::{Evaluation, Weighted, utils::run_solution};
+use mh_tsptw::shared::{Instance, Solution};
+use mh_tsptw::io::{io_instance::load_instance, io_solution::load_solution};
 use mh_tsptw::runner::{RunConfig, run};
 
-use mh_tsptw::problem::evaluation::utils::run_solution;
+type Population = Vec<Solution>;
 
 const CHALLENGE_PATHS: [&str; 3] = ["data/inst1", "data/inst2", "data/inst3"];
 
@@ -39,14 +36,11 @@ fn main() {
         return;
     }
 
-    let instance = load_instance(CHALLENGE_PATHS[CHALLENGE_NB - 1]);
+    let (instance, _graph_instance) = load_instance(CHALLENGE_PATHS[CHALLENGE_NB - 1]).unwrap();
     let evaluation = Weighted {
         violation_coefficient: 10000000.0f32,
     };
-    let mut neighbourhood = NeighborFnMixer::new(vec![
-        Box::new(Swap::new()),
-        Box::new(TwoOpt::new()),
-    ], vec![0.5, 0.5]);
+    let mut neighborhood = Swap::new();
 
 
     let config = RunConfig {
@@ -59,10 +53,11 @@ fn main() {
         .map(|sol| evaluation.score(&instance, sol))
         .collect();
 
-    let sa_init_temp = SimulatedAnnealing::estimate_initial_temperature(
+    let mut temp_sa = SimulatedAnnealing::new(1000.0, 0.995, 0.001, &instance);
+    let sa_init_temp = temp_sa.estimate_initial_temperature(
         &instance,
         &evaluation,
-        &mut neighbourhood,
+        &mut neighborhood,
         10000,
         0.9f32,
     );
@@ -70,26 +65,26 @@ fn main() {
 
     println!("Estimated SA temperature: {}", sa_init_temp);
     let sa_min_temp = sa_init_temp * 0.0005f32;
-    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.995f32, sa_min_temp);
+    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.995f32, sa_min_temp, &instance);
 
     let sa_best = run(
         &instance,
         &mut sa_population,
         &mut fitnesss,
         &mut sa_algorithm,
-        &mut neighbourhood,
+        &mut neighborhood,
         &evaluation,
         &config,
     );
     report_result("Simulated Annealing", &instance, &sa_population, sa_best);
 
-    let example_solution = load_solution(EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB - 1]);
+    let example_solution = load_solution(&EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB - 1].to_string());
     match example_solution {
         Ok(sol) => {
-            let (dist, viol) = run_solution(&instance, &(sol.0));
+            let eval_result = run_solution(&instance, &sol.path);
             println!(
                 "Example solution performance: total_distance={}, total_violation={}",
-                dist, viol
+                eval_result.total_distance, eval_result.violation_time
             );
         }
         Err(e) => println!("Failed to load example solution: {}", e),
@@ -97,16 +92,8 @@ fn main() {
 }
 
 fn build_initial_population(instance: &Instance) -> Population {
-    let route: Vec<u32> = instance
-        .graph
-        .iter()
-        .enumerate()
-        .skip(1) // skip depot
-        .map(|(idx, _)| idx as u32)
-        .collect();
-    let mut greedy_route = route.clone();
-
-    vec![greedy_route]
+    let route: Vec<u32> = (0..instance.size() as u32).collect();
+    vec![route]
 }
 
 fn report_result(
@@ -127,10 +114,10 @@ fn report_result(
                     .collect::<Vec<String>>()
                     .join(" -> ")
             );
-            let (total_distance, total_violation) = run_solution(instance, best);
+            let eval_result = run_solution(instance, best);
             println!(
                 "{} performance: total_distance={}, total_violation={} ",
-                name, total_distance, total_violation
+                name, eval_result.total_distance, eval_result.violation_time
             );
         }
         None => eprintln!("{} aborted: population is empty.", name),
