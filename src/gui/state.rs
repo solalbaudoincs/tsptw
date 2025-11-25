@@ -3,11 +3,14 @@ use rayon::prelude::*;
 
 use crate::gui::solver::{Solver, ConcreteSolver};
 use crate::initializer::{Initializer, RandomInitializer};
-use crate::shared::{Instance, GraphInstance};
+use crate::shared::{Instance, GraphInstance, Solution};
 use crate::eval::{Evaluation, Weighted, Lexicographic};
-use crate::algorithms::SimulatedAnnealing;
+use crate::algorithms::{SimulatedAnnealing, GeneticAlgorithm, CrossoverType, CompetitionType, HillClimbing, ACO};
 use crate::neighborhood::{Swap, TwoOpt};
 use crate::io::io_instance::load_instance;
+
+use crate::neighborhood::NeighborhoodType;
+use crate::eval::EvaluationType;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum AppPhase {
@@ -286,7 +289,68 @@ impl AppState {
                         }
                     }
                 }
-                
+                AlgoType::GeneticAlgorithm => {
+                    let pop_size: usize = 50;
+                    let mut population: Vec<Solution> = Vec::with_capacity(pop_size);
+                    for _ in 0..pop_size {
+                        population.push(initializer.initialize(instance));
+                    }
+
+                    let algo = GeneticAlgorithm::new(
+                        instance,
+                        0.8,  // crossover_rate
+                        CrossoverType::PMX,
+                        0.1,  // elitism_rate
+                        0.5,  // competition_participation_rate
+                        CompetitionType::Tournament,
+                        pop_size,
+                    );
+
+                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                    let fitnesses: Vec<f32> = population.iter().map(|s| eval.score(instance, s)).collect();
+
+                    let neighbor = Swap::new();
+                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                    run.metric_names = Solver::get_metric_names(&solver);
+                    run.solver = Some(Box::new(solver));
+                }
+                AlgoType::HillClimbing => {
+                    let population = vec![initializer.initialize(instance)];
+                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                    let initial_fitness = eval.score(instance, &population[0]);
+                    let fitnesses = vec![initial_fitness];
+
+                    let algo = HillClimbing::new(20, instance);
+
+                    let neighbor = Swap::new();
+                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                    run.metric_names = Solver::get_metric_names(&solver);
+                    run.solver = Some(Box::new(solver));
+                }
+                AlgoType::AntColonyOptimization => {
+                    let pop_size: usize = 20;
+                    let mut population: Vec<Solution> = Vec::with_capacity(pop_size);
+                    for _ in 0..pop_size {
+                        population.push(initializer.initialize(instance));
+                    }
+
+                    let algo = ACO::new(
+                        instance,
+                        0.1,   // evaporation_rate
+                        1.0,   // alpha
+                        2.0,   // beta
+                        self.max_steps,
+                        1.0,   // pheromone_deposit
+                    );
+
+                    let eval = Weighted { violation_coefficient: self.violation_coefficient };
+                    let fitnesses: Vec<f32> = population.iter().map(|s| eval.score(instance, s)).collect();
+
+                    let neighbor = Swap::new();
+                    let solver = ConcreteSolver::new(algo, eval, neighbor, instance.clone(), population, fitnesses);
+                    run.metric_names = Solver::get_metric_names(&solver);
+                    run.solver = Some(Box::new(solver));
+                }
             }
             run.is_running = true;
             self.runs.push(run);
