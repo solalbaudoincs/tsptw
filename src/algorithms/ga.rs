@@ -1,11 +1,13 @@
 use crate::shared::{Solution, Instance, Fitness, Ville};
 use crate::eval;
+use crate::neighborhood::NeighborFn;
 
 use super::Metaheuristic;
 
 use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rayon::vec;
 
 pub enum CompetitionType {
     Tournament,
@@ -87,9 +89,9 @@ impl GeneticAlgorithm {
             rng: StdRng::from_os_rng(),
 
             competition_type,
-            participants_buffer: Vec::with_capacity(competition_participation_count),
-            best_idx_buffer: Vec::with_capacity(population_size),
-            new_population_buffer: Vec::with_capacity(population_size),
+            participants_buffer: vec![0; competition_participation_count],
+            best_idx_buffer: vec![0; solution_size],
+            new_population_buffer: vec![vec![0; solution_size]; population_size],
             child1_visited_buffer: vec![false; solution_size],
             child2_visited_buffer: vec![false; solution_size],
             child1_mapping_buffer: vec![u32::MAX; solution_size],
@@ -142,9 +144,11 @@ impl GeneticAlgorithm {
     /// Sélectionne les meilleurs individus de la population et stocke leurs indices dans best_idx_buffer
     fn select_best(&mut self, fitness: &[Fitness]) -> () {
         
+        self.best_idx_buffer.clear();
+
         // Initialize indices
         for i in 0..self.solution_size {
-            self.best_idx_buffer[i] = i;
+            self.best_idx_buffer.push(i);
         }
         
         // Use select_nth_unstable to partition and find the best elitism_count indices
@@ -376,10 +380,11 @@ impl GeneticAlgorithm {
 
 
 impl Metaheuristic for GeneticAlgorithm {
-    fn step<Eval: eval::Evaluation>(
+    fn step<Eval: eval::Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
+        _neighborhood: &mut Neighborhood,
         instance: &Instance,
         evaluation: &Eval
     ) -> () {
@@ -429,6 +434,7 @@ impl Metaheuristic for GeneticAlgorithm {
             fitness[i] = evaluation.score(instance, &population[i]);
         }
     }
+
     fn get_metrics(&self) -> std::collections::HashMap<String, f32> {
         std::collections::HashMap::new()
     }

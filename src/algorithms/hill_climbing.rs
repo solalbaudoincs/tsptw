@@ -30,22 +30,17 @@ impl HillClimbing {
 }
 
 impl HillClimbing {
-    fn single_step<E: Evaluation>(
+    fn single_step<E: Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         solution: &mut Solution,
         fitness: &mut Fitness,
+        neighborhood: &mut Neighborhood,
         instance: &Instance,
         evaluation: &E,
     ) -> () {
 
         for _ in 0..self.nb_neighbors {
-            let r = self.rng.random_range(0.0..1.0);
-
-            if r < self.two_opt_rate {
-                TwoOpt::new().get_neighbor(&solution, &mut self.neighbor_buffer[..])
-            } else {
-                Swap::new().get_neighbor(&solution, &mut self.neighbor_buffer[..])
-            };
+            neighborhood.get_neighbor(solution, &mut self.neighbor_buffer);
 
             let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
             if neighbor_fitness < *fitness {
@@ -57,10 +52,11 @@ impl HillClimbing {
 }
 
 impl Metaheuristic for HillClimbing {
-    fn step<Eval: Evaluation>(
+    fn step<Eval: Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
+        neighborhood: &mut Neighborhood,
         instance: &Instance,
         evaluation: &Eval,
     ) {
@@ -68,6 +64,7 @@ impl Metaheuristic for HillClimbing {
             self.single_step(
                 &mut population[i],
                 &mut fitness[i],
+                neighborhood,
                 instance,
                 evaluation,
             );

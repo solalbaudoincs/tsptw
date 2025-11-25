@@ -228,10 +228,9 @@ impl AppState {
             
             match self.algo_type {
                 AlgoType::SimulatedAnnealing => {
-                    let two_opt_rate: f32 = 0.1;
                     let population: Vec<Solution> = vec![initializer.initialize(instance)];
                     let algo = SimulatedAnnealing::new(
-                        self.sa_temp, self.sa_cooling, 0.001, two_opt_rate, instance
+                        self.sa_temp, self.sa_cooling, 0.001, instance
                     );
                     let eval = Weighted { violation_coefficient: self.violation_coefficient };
                     

@@ -1,11 +1,12 @@
 
 use clap::Parser;
-use mh_tsptw::algorithms::SimulatedAnnealing;
+use mh_tsptw::algorithms::{SimulatedAnnealing, GeneticAlgorithm, CrossoverType, CompetitionType};
 use mh_tsptw::neighborhood::Swap;
 use mh_tsptw::eval::{Evaluation, Weighted, utils::run_solution};
 use mh_tsptw::shared::{Instance, Solution};
 use mh_tsptw::io::{io_instance::load_instance, io_solution::load_solution};
 use mh_tsptw::runner::{RunConfig, run};
+use mh_tsptw::initializer::{Initializer, RandomInitializer};
 
 type Population = Vec<Solution>;
 
@@ -43,8 +44,12 @@ fn main() {
     let mut neighborhood = Swap::new();
 
 
-    let config = RunConfig {
-        max_iterations: 1000000,
+    let sa_config = RunConfig {
+        max_iterations: 10000,
+    };
+
+    let ga_config = RunConfig {
+        max_iterations: 1000,
     };
 
     let mut sa_population = build_initial_population(&instance);
@@ -53,9 +58,8 @@ fn main() {
         .map(|sol| evaluation.score(&instance, sol))
         .collect();
 
-    let two_opt_rate: f32 = 0.1;
     
-    let mut temp_sa = SimulatedAnnealing::new(1000.0, 0.995, 0.001, two_opt_rate, &instance);
+    let mut temp_sa = SimulatedAnnealing::new(1000.0, 0.995, 0.001, &instance);
     let sa_init_temp = temp_sa.estimate_initial_temperature(
         &instance,
         &evaluation,
@@ -67,17 +71,50 @@ fn main() {
 
     println!("Estimated SA temperature: {}", sa_init_temp);
     let sa_min_temp = sa_init_temp * 0.0005f32;
-    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.995f32, sa_min_temp, two_opt_rate, &instance);
+    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.995f32, sa_min_temp, &instance);
 
     let sa_best = run(
         &instance,
         &mut sa_population,
         &mut fitnesss,
         &mut sa_algorithm,
+        &mut neighborhood,
         &evaluation,
-        &config,
+        &sa_config,
     );
     report_result("Simulated Annealing", &instance, &sa_population, sa_best);
+
+    // Genetic Algorithm
+    let ga_population_size = 100;
+    let mut random_init = RandomInitializer;
+    let mut ga_population: Vec<Solution> = (0..ga_population_size)
+        .map(|_| random_init.initialize(&instance))
+        .collect();
+    let mut ga_fitnesss: Vec<f32> = ga_population
+        .iter()
+        .map(|sol| evaluation.score(&instance, sol))
+        .collect();
+    
+    let mut ga_algorithm = GeneticAlgorithm::new(
+        &instance,
+        0.8,  // crossover_rate
+        CrossoverType::PMX,
+        0.1,  // elitism_rate
+        0.5,  // competition_participation_rate
+        CompetitionType::Tournament,
+        ga_population_size,
+    );
+
+    let ga_best = run(
+        &instance,
+        &mut ga_population,
+        &mut ga_fitnesss,
+        &mut ga_algorithm,
+        &mut neighborhood,
+        &evaluation,
+        &ga_config,
+    );
+    report_result("Genetic Algorithm", &instance, &ga_population, ga_best);
 
     let example_solution = load_solution(&EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB - 1].to_string());
     match example_solution {
