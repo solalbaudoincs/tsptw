@@ -1,5 +1,6 @@
 use crate::shared::{Solution, Instance, Fitness, Ville};
 use crate::eval;
+use crate::neighborhood::NeighborFn;
 
 use super::Metaheuristic;
 
@@ -149,10 +150,11 @@ impl ACO {
 
 
 impl Metaheuristic for ACO {
-    fn step<Eval: eval::Evaluation>(
+    fn step<Eval: eval::Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
+        _neighborhood: &mut Neighborhood,
         instance: &Instance,
         metric_fn: &Eval
     ) -> () {

@@ -1,5 +1,6 @@
 use crate::shared::{Instance, Solution, Fitness};
 use crate::eval::Evaluation;
+use crate::neighborhood::NeighborFn;
 
 use std::collections::HashMap;
 
@@ -17,10 +18,11 @@ mod aco;
 pub use aco::ACO;
 
 pub trait Metaheuristic {
-    fn step<Eval: Evaluation>(
+    fn step<Eval: Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         population: &mut [Solution],
         fitnesses: &mut [Fitness],
+        neighborhood: &mut Neighborhood,
         instance: &Instance,
         evaluation: &Eval,
     );

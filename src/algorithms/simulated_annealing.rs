@@ -1,6 +1,6 @@
 use super::Metaheuristic;
 
-use crate::neighborhood::{NeighborFn, TwoOpt, Swap};
+use crate::neighborhood::{self, NeighborFn, Swap, TwoOpt};
 use crate::initializer::{RandomInitializer, Initializer};
 use crate::shared::{Fitness, Instance, Solution};
 use crate::eval::Evaluation;
@@ -15,7 +15,6 @@ pub struct SimulatedAnnealing {
     initial_temperature: f32,
     cooling_rate: f32,
     stopping_temperature: f32,
-    two_opt_rate: f32,
 
     rng: StdRng,
 
@@ -25,13 +24,12 @@ pub struct SimulatedAnnealing {
 
 impl SimulatedAnnealing {
 
-    pub fn new(initial_temperature: f32, two_opt_rate: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
+    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
 
             let solution_size = instance.size();
 
             SimulatedAnnealing {
             initial_temperature,
-            two_opt_rate,
             cooling_rate,
             stopping_temperature,
             rng: StdRng::from_os_rng(),
@@ -88,11 +86,12 @@ impl SimulatedAnnealing {
         }
     }
 
-    fn single_step<E: Evaluation>(
+    fn single_step<E: Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         solution: &mut Solution,
         fitness: &mut Fitness,
         instance: &Instance,
+        neighborhood: &mut Neighborhood,
         evaluation: &E,
     ) {
         let mut rng = rand::rng();
@@ -102,13 +101,8 @@ impl SimulatedAnnealing {
             self.neighbor_buffer.resize(solution.len(), 0);
         }
 
-        let r = self.rng.random_range(0.0..1.0) ;
+        neighborhood.get_neighbor(solution, &mut self.neighbor_buffer);
 
-        if r < self.two_opt_rate {
-            TwoOpt::new().get_neighbor(solution, &mut self.neighbor_buffer[..]);
-        } else {
-            Swap::new().get_neighbor(solution, &mut self.neighbor_buffer[..]);
-        }
 
         let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
         let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
@@ -125,10 +119,11 @@ impl SimulatedAnnealing {
 }
 
 impl Metaheuristic for SimulatedAnnealing {
-    fn step<Eval: Evaluation>(
+    fn step<Eval: Evaluation, Neighborhood: NeighborFn>(
         &mut self,
         population: &mut [Solution],
         fitness: &mut [Fitness],
+        neighborhood: &mut Neighborhood,
         instance: &Instance,
         evaluation: &Eval,
     ) {
@@ -137,6 +132,7 @@ impl Metaheuristic for SimulatedAnnealing {
                 &mut population[i],
                 &mut fitness[i],
                 instance,
+                neighborhood,
                 evaluation,
             );
         }

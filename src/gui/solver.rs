@@ -60,6 +60,7 @@ where
         self.algo.step(
             &mut self.population,
             &mut self.fitnesses,
+            &mut self.neighbor,
             &self.instance,
             &self.eval,
         );
