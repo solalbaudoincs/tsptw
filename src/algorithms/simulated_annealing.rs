@@ -19,7 +19,8 @@ pub struct SimulatedAnnealing {
     rng: StdRng,
 
     neighbor_buffer: Solution,
-    avg_acceptance_rate: f32,
+    avg_acceptance_rate: Option<f32>,
+    current_fitness_avg: Option<f32>,
 }
 
 impl SimulatedAnnealing {
@@ -35,7 +36,8 @@ impl SimulatedAnnealing {
             stopping_temperature,
             rng: StdRng::from_os_rng(),
             neighbor_buffer: vec![0; solution_size],
-            avg_acceptance_rate: 0.5,
+            avg_acceptance_rate: None,
+            current_fitness_avg: None,
         }
     }
     
@@ -82,7 +84,11 @@ impl SimulatedAnnealing {
             1.0
         } else {
             let proba = ((current_fitness - neighbor_fitness) / temperature).exp();
-            self.avg_acceptance_rate = 0.9 * self.avg_acceptance_rate + 0.1 * proba;
+            match self.avg_acceptance_rate {
+                None => self.avg_acceptance_rate = Some(proba),
+                Some(_) => {}
+            }
+            self.avg_acceptance_rate = Some(0.9 * self.avg_acceptance_rate.unwrap() + 0.1 * proba);
             proba
         }
     }
@@ -112,7 +118,10 @@ impl SimulatedAnnealing {
         if u < accept_prob {
             solution.clone_from_slice(&self.neighbor_buffer[..]);
             *fitness = neighbor_fitness;
-        
+            match self.current_fitness_avg {
+                None => self.current_fitness_avg = Some(*fitness),
+                Some(_) => {}
+            } self.current_fitness_avg = Some(0.9 * self.current_fitness_avg.unwrap_or(0.0) + 0.1 * (*fitness));
         } 
         
         self.initial_temperature *= self.cooling_rate;
@@ -143,11 +152,12 @@ impl Metaheuristic for SimulatedAnnealing {
     fn get_metrics(&self) -> HashMap<String, f32> {
         let mut metrics = HashMap::new();
         metrics.insert("temperature".to_string(), self.initial_temperature);
-        metrics.insert("acceptance_probability_avg".to_string(), self.avg_acceptance_rate);
+        metrics.insert("acceptance_probability_avg".to_string(), self.avg_acceptance_rate.unwrap_or(0.0));
+        metrics.insert("fitness_avg".to_string(), self.current_fitness_avg.unwrap_or(self.current_fitness_avg.unwrap_or(0.0))); // Placeholder, replace with actual average fitness calculation
         metrics
     }
 
     fn get_metric_names(&self) -> Vec<String> {
-        vec!["temperature".to_string(), "acceptance_probability_avg".to_string()]
+        vec!["temperature".to_string(), "acceptance_probability_avg".to_string(), "fitness_avg".to_string()]
     }
 }
