@@ -1,6 +1,7 @@
 use super::Metaheuristic;
 
 use crate::neighborhood::{NeighborFn};
+use crate::neighborhood::{NeighborFn};
 use crate::initializer::{RandomInitializer, Initializer};
 use crate::shared::{Fitness, Instance, Solution};
 use crate::eval::Evaluation;
@@ -19,10 +20,14 @@ pub struct SimulatedAnnealing {
     rng: StdRng,
 
     neighbor_buffer: Solution,
-    acceptance_probability_avg: f32,
 }
 
 impl SimulatedAnnealing {
+
+    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
+
+            let solution_size = instance.size();
+
 
     pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
 
@@ -34,10 +39,9 @@ impl SimulatedAnnealing {
             stopping_temperature,
             rng: StdRng::from_os_rng(),
             neighbor_buffer: vec![0; solution_size],
-            acceptance_probability_avg: 1.0,
+            avg_acceptance_rate: 0.5,
         }
     }
-
     
     pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
         &mut self,
@@ -81,7 +85,7 @@ impl SimulatedAnnealing {
             1.0
         } else {
             let proba = ((current_fitness - neighbor_fitness) / temperature).exp();
-            self.acceptance_probability_avg = 0.9 * self.acceptance_probability_avg + 0.1 * proba;
+            self.avg_acceptance_rate = 0.9 * self.avg_acceptance_rate + 0.1 * proba;
             proba
         }
     }
@@ -105,6 +109,7 @@ impl SimulatedAnnealing {
 
         let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
         let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
+        let u = self.rng.random_range(0.0..1.0);
         let u = self.rng.random_range(0.0..1.0);
 
         if u < accept_prob {
