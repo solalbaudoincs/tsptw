@@ -35,6 +35,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                   ui.horizontal(|ui| {
                       ui.label("Algorithm:");
                       ui.radio_value(&mut state.algo_type, AlgoType::SimulatedAnnealing, "Simulated Annealing");
+                      ui.radio_value(&mut state.algo_type, AlgoType::GeneticAlgorithm, "Genetic Algorithm");
+                      ui.radio_value(&mut state.algo_type, AlgoType::HillClimbing, "Hill Climbing");
+                      ui.radio_value(&mut state.algo_type, AlgoType::AntColonyOptimization, "Ant Colony Optimization");
                   });
                   
                   ui.horizontal(|ui| {
@@ -57,6 +60,13 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                   if state.algo_type == AlgoType::SimulatedAnnealing {
                       ui.add(egui::Slider::new(&mut state.sa_temp, 1.0..=100000.0).text("Initial Temp"));
                       ui.add(egui::Slider::new(&mut state.sa_cooling, 0.9..=1.0).text("Cooling Rate"));
+                  }
+
+                  if state.algo_type == AlgoType::AntColonyOptimization {
+                      ui.add(egui::Slider::new(&mut state.aco_evaporation_rate, 0.0..=1.0).text("Evaporation Rate"));
+                      ui.add(egui::Slider::new(&mut state.aco_alpha, 0.0..=10.0).text("Alpha (Pheromone)"));
+                      ui.add(egui::Slider::new(&mut state.aco_beta, 0.0..=10.0).text("Beta (Heuristic)"));
+                      ui.add(egui::Slider::new(&mut state.aco_pheromone_deposit, 0.1..=100.0).text("Pheromone Deposit"));
                   }
                   
                   if state.evaluation_type == EvaluationType::Weighted {
