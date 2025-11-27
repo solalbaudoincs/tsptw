@@ -113,7 +113,6 @@ impl SimulatedAnnealing {
         let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
         let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
         let u = self.rng.random_range(0.0..1.0);
-        let u = self.rng.random_range(0.0..1.0);
 
         if u < accept_prob {
             solution.clone_from_slice(&self.neighbor_buffer[..]);

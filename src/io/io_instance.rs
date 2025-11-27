@@ -62,6 +62,10 @@ pub fn load_instance(path: &str) -> io::Result<(Instance, GraphInstance)> {
 
         let _id = parts.next();
 
+        if _id == Some("999") {
+            break; // End of instance data
+        }
+
         let x = parts
             .next()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData,
@@ -102,7 +106,6 @@ pub fn load_instance(path: &str) -> io::Result<(Instance, GraphInstance)> {
     }
 
     let distance_matrix = calculate_distance_matrix(&positions);
-
     Ok((
         Instance {
             windows,
