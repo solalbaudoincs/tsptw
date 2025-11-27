@@ -68,9 +68,17 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                       ui.add(egui::Slider::new(&mut state.aco_beta, 0.0..=10.0).text("Beta (Heuristic)"));
                       ui.add(egui::Slider::new(&mut state.aco_pheromone_deposit, 0.1..=100.0).text("Pheromone Deposit"));
                   }
+
+                  if state.algo_type == AlgoType::GeneticAlgorithm || state.algo_type == AlgoType::AntColonyOptimization {
+                      ui.add(egui::Slider::new(&mut state.population_size, 10..=500).text("Population Size"));
+                  }
                   
                   if state.evaluation_type == EvaluationType::Weighted {
                       ui.add(egui::Slider::new(&mut state.violation_coefficient, 0.0..=10000.0).text("Violation Coeff"));
+                  }
+
+                  if state.evaluation_type == EvaluationType::Lexicographic {
+                      ui.checkbox(&mut state.lexicographic_distance_first, "Prioritize Distance over Violation");
                   }
               });
   

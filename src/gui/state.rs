@@ -174,6 +174,7 @@ pub struct AppState {
     pub sa_temp: f32,
     pub sa_cooling: f32,
     pub violation_coefficient: f32,
+    pub lexicographic_distance_first: bool,
 
     // ACO parameters
     pub aco_evaporation_rate: f32,
@@ -181,6 +182,8 @@ pub struct AppState {
     pub aco_beta: f32,
     pub aco_pheromone_deposit: f32,
     
+    pub population_size: usize,
+
     pub steps_per_frame: usize,
     pub max_steps: usize,
     
@@ -209,10 +212,12 @@ impl AppState {
             sa_temp: 1000.0,
             sa_cooling: 0.9995,
             violation_coefficient: 1000.0,
+            lexicographic_distance_first: false,
             aco_evaporation_rate: 0.1,
             aco_alpha: 1.0,
             aco_beta: 2.0,
             aco_pheromone_deposit: 1.0,
+            population_size: 50,
             steps_per_frame: 100,
             max_steps: 10000,
             runs: Vec::new(),
@@ -278,7 +283,7 @@ impl AppState {
                             }
                         },
                         EvaluationType::Lexicographic => {
-                            let eval = Lexicographic::new(false); // Default to violation first
+                            let eval = Lexicographic::new(self.lexicographic_distance_first);
                             let initial_fitness = eval.score(instance, &population[0]);
                             let fitnesses = vec![initial_fitness];
                             
@@ -300,7 +305,7 @@ impl AppState {
                     }
                 }
                 AlgoType::GeneticAlgorithm => {
-                    let pop_size: usize = 50;
+                    let pop_size: usize = self.population_size;
                     let mut population: Vec<Solution> = Vec::with_capacity(pop_size);
                     for _ in 0..pop_size {
                         population.push(initializer.initialize(instance));
@@ -338,7 +343,7 @@ impl AppState {
                     run.solver = Some(Box::new(solver));
                 }
                 AlgoType::AntColonyOptimization => {
-                    let pop_size: usize = 20;
+                    let pop_size: usize = self.population_size;
                     let mut population: Vec<Solution> = Vec::with_capacity(pop_size);
                     for _ in 0..pop_size {
                         population.push(initializer.initialize(instance));
