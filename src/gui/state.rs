@@ -174,6 +174,12 @@ pub struct AppState {
     pub sa_temp: f32,
     pub sa_cooling: f32,
     pub violation_coefficient: f32,
+
+    // ACO parameters
+    pub aco_evaporation_rate: f32,
+    pub aco_alpha: f32,
+    pub aco_beta: f32,
+    pub aco_pheromone_deposit: f32,
     
     pub steps_per_frame: usize,
     pub max_steps: usize,
@@ -203,6 +209,10 @@ impl AppState {
             sa_temp: 1000.0,
             sa_cooling: 0.9995,
             violation_coefficient: 1000.0,
+            aco_evaporation_rate: 0.1,
+            aco_alpha: 1.0,
+            aco_beta: 2.0,
+            aco_pheromone_deposit: 1.0,
             steps_per_frame: 100,
             max_steps: 10000,
             runs: Vec::new(),
@@ -336,11 +346,11 @@ impl AppState {
 
                     let algo = ACO::new(
                         instance,
-                        0.1,   // evaporation_rate
-                        1.0,   // alpha
-                        2.0,   // beta
+                        self.aco_evaporation_rate,
+                        self.aco_alpha,
+                        self.aco_beta,
                         self.max_steps,
-                        1.0,   // pheromone_deposit
+                        self.aco_pheromone_deposit,
                     );
 
                     let eval = Weighted { violation_coefficient: self.violation_coefficient };
