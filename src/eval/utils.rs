@@ -17,6 +17,7 @@ pub fn run_solution(instance: &Instance, solution: &Solution) -> Eval {
     let mut nb_violations: u32 = 0;
     let mut delay: f32 = 0.0;
 
+
     for idx in 0..(solution.len()) {
 
         let from = solution[idx] as usize;

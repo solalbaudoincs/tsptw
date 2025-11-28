@@ -21,6 +21,16 @@ pub fn load_solution(path: &String) -> io::Result<BestSolution> {
         .filter_map(|s| s.parse().ok())
         .collect();
 
+        
+    // If the file uses 1-based indices (all >= 1), convert to 0-based
+    let max_val = sol_list.iter().copied().max().unwrap_or(0);
+    let path = if max_val >= 1 && sol_list.iter().all(|&v| v >= 1) {
+        eprintln!("Warning: converting 1-based solution file to 0-based indices");
+        sol_list.iter().map(|&v| v - 1).collect()
+    } else {
+        sol_list
+    };
+
     let mut sol_val_line = String::new();
     reader.read_line(&mut sol_val_line)?;
 
@@ -35,7 +45,7 @@ pub fn load_solution(path: &String) -> io::Result<BestSolution> {
             })?;
 
     Ok(BestSolution {
-        path: sol_list,
+        path: path,
         duree: Some(sol_val),
     })
 }

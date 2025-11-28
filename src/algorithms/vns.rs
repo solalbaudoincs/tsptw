@@ -1,0 +1,3 @@
+struct VNS {
+    // ... existing fields ...
+    shake_size: usize,}
