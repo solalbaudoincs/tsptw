@@ -1,7 +1,6 @@
 use super::Metaheuristic;
 
 use crate::neighborhood::{NeighborFn};
-use crate::initializer::{RandomInitializer, Initializer};
 use crate::shared::{Fitness, Instance, Solution};
 use crate::eval::Evaluation;
 
@@ -12,73 +11,66 @@ use rand::SeedableRng;
 
 /// Algorithme de Recuit Simulé pour le TSPTW, utilisant des voisins générés par des opérations de swap et de 2-opt.
 pub struct SimulatedAnnealing {
-    initial_temperature: f32,
+
+    temperature: f32,
     cooling_rate: f32,
     stopping_temperature: f32,
 
     rng: StdRng,
 
     neighbor_buffer: Solution,
+
+    // Average acceptance rate of worse solutions
     avg_acceptance_rate: Option<f32>,
+    acceptance_smoothing_factor: f32,
+
+    // Desired initial acceptance rate
+    initial_acceptance_rate: f32,
+    is_attained_initial_rate: bool,
+
+    // Average change in fitness when accepting a worse solution
+    avg_delta_fitness: Option<f32>,
+    delta_fitness_smoothing_factor: f32,
+
+
+    // Avg fitness of the current solutions
     current_fitness_avg: Option<f32>,
 }
 
 impl SimulatedAnnealing {
 
+    pub fn new(
+        initial_temperature: f32,
+        cooling_rate: f32,
+        stopping_temperature: f32,
+        acceptance_smoothing_factor: f32,
+        initial_acceptance_rate: f32,
+        delta_fitness_smoothing_factor: f32,
+        instance: &Instance
+    ) -> Self {
+        let solution_size = instance.size();
 
-    pub fn new(initial_temperature: f32, cooling_rate: f32, stopping_temperature: f32, instance: &Instance) -> Self {
-
-            let solution_size = instance.size();
-
-            SimulatedAnnealing {
-            initial_temperature,
+        SimulatedAnnealing {
+            temperature: initial_temperature,
             cooling_rate,
             stopping_temperature,
             rng: StdRng::from_os_rng(),
             neighbor_buffer: vec![0; solution_size],
             avg_acceptance_rate: None,
+            acceptance_smoothing_factor,
+            initial_acceptance_rate,
+            is_attained_initial_rate: false,
+            avg_delta_fitness: None,
+            delta_fitness_smoothing_factor,
             current_fitness_avg: None,
         }
-    }
-    
-    pub fn estimate_initial_temperature<E: Evaluation, N: NeighborFn>(
-        &mut self,
-        instance: &Instance,
-        evaluation: &E,
-        neighborhood: &mut N,
-        sample_size: usize,
-        desired_acceptance_rate: f32,
-    ) -> f32 {
-        let mut deltas = Vec::new();
-        // Start from a random initial solution
-        let mut rd_initializer = RandomInitializer{};
-        let mut current_solution = rd_initializer.initialize(instance);
-        let mut current_fitness = evaluation.score(instance, &current_solution);
-
-        for _ in 0..sample_size {
-
-            // Generate neighbor and puts it in buffer
-            neighborhood.get_neighbor(&current_solution, &mut self.neighbor_buffer);
-            let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
-
-            let delta_energy = neighbor_fitness - current_fitness;
-            deltas.push(delta_energy);
-
-            current_solution = self.neighbor_buffer.clone();
-            current_fitness = neighbor_fitness;
-        }
-        // Calculate average increase in energy from sampled uphill moves
-        let average_delta = deltas.iter().sum::<f32>() / deltas.len() as f32;
-        let delta_variance = deltas.iter().map(|d| (d - average_delta).powi(2)).sum::<f32>() / deltas.len() as f32;
-
-        // Compute initial temperature for the desired acceptance probability
-        -(3.0 * delta_variance.sqrt()) / desired_acceptance_rate.ln()
     }
 }
 
 
 
 impl SimulatedAnnealing {
+
     fn acceptance_probability(&mut self, current_fitness: f32, neighbor_fitness: f32, temperature: f32) -> f32 {
         if neighbor_fitness < current_fitness {
             1.0
@@ -88,9 +80,35 @@ impl SimulatedAnnealing {
                 None => self.avg_acceptance_rate = Some(proba),
                 Some(_) => {}
             }
-            self.avg_acceptance_rate = Some(0.9 * self.avg_acceptance_rate.unwrap() + 0.1 * proba);
+            self.avg_acceptance_rate = Some(
+                self.acceptance_smoothing_factor * self.avg_acceptance_rate.unwrap() + (1.0 - self.acceptance_smoothing_factor) * proba
+            );
             proba
         }
+    }
+
+    fn update_avg_delta_fitness(&mut self, delta: f32) {
+        match self.avg_delta_fitness {
+            None => self.avg_delta_fitness = Some(delta),
+            Some(_) => {}
+        }
+        self.avg_delta_fitness = Some(
+            self.delta_fitness_smoothing_factor * self.avg_delta_fitness.unwrap() + (1.0 - self.delta_fitness_smoothing_factor) * delta
+        );
+    }
+
+    fn start_condition_met(&mut self) -> bool {
+
+        if self.is_attained_initial_rate {
+            return true;
+        }
+
+        if self.avg_acceptance_rate.unwrap_or(0.0) > self.initial_acceptance_rate {
+            self.is_attained_initial_rate = true;
+            return true;
+        }
+
+        false
     }
 
     fn single_step<E: Evaluation, Neighborhood: NeighborFn>(
@@ -111,7 +129,7 @@ impl SimulatedAnnealing {
 
 
         let neighbor_fitness = evaluation.score(instance, &self.neighbor_buffer);
-        let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.initial_temperature);
+        let accept_prob = self.acceptance_probability(*fitness, neighbor_fitness, self.temperature);
         let u = self.rng.random_range(0.0..1.0);
 
         if u < accept_prob {
@@ -123,9 +141,21 @@ impl SimulatedAnnealing {
             } self.current_fitness_avg = Some(0.9 * self.current_fitness_avg.unwrap_or(0.0) + 0.1 * (*fitness));
         } 
         
-        self.initial_temperature *= self.cooling_rate;
+        if self.start_condition_met() {
+            self.temperature *= self.cooling_rate;
+        }
+
+        else { 
+            let delta = (neighbor_fitness - *fitness).abs();
+            self.update_avg_delta_fitness(delta);
+            let new_temp = -self.avg_delta_fitness.unwrap_or(1.0) / self.avg_acceptance_rate.unwrap_or(0.1).ln();
+            self.temperature = new_temp.max(self.temperature);
+        }
     }
+
 }
+
+
 
 impl Metaheuristic for SimulatedAnnealing {
     fn step<Eval: Evaluation, Neighborhood: NeighborFn>(
@@ -150,7 +180,7 @@ impl Metaheuristic for SimulatedAnnealing {
 
     fn get_metrics(&self) -> HashMap<String, f32> {
         let mut metrics = HashMap::new();
-        metrics.insert("temperature".to_string(), self.initial_temperature);
+        metrics.insert("temperature".to_string(), self.temperature);
         metrics.insert("acceptance_probability_avg".to_string(), self.avg_acceptance_rate.unwrap_or(0.0));
         metrics.insert("fitness_avg".to_string(), self.current_fitness_avg.unwrap_or(self.current_fitness_avg.unwrap_or(0.0))); // Placeholder, replace with actual average fitness calculation
         metrics

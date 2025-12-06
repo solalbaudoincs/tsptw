@@ -59,19 +59,17 @@ fn main() {
         .collect();
 
     
-    let mut temp_sa = SimulatedAnnealing::new(1000.0, 0.995, 0.001, &instance);
-    let sa_init_temp = temp_sa.estimate_initial_temperature(
-        &instance,
-        &evaluation,
-        &mut neighborhood,
-        10000,
-        0.9f32,
+    let sa_init_temp = 1000.0;
+    let sa_min_temp = 0.001;
+    let mut sa_algorithm = SimulatedAnnealing::new(
+        sa_init_temp,
+        0.995,
+        sa_min_temp,
+        0.9,  // acceptance_smoothing_factor
+        0.8,  // initial_acceptance_rate
+        0.9,  // delta_fitness_smoothing_factor
+        &instance
     );
-
-
-    println!("Estimated SA temperature: {}", sa_init_temp);
-    let sa_min_temp = sa_init_temp * 0.0005f32;
-    let mut sa_algorithm = SimulatedAnnealing::new(sa_init_temp, 0.995f32, sa_min_temp, &instance);
 
     let sa_best = run(
         &instance,

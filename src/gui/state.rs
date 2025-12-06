@@ -173,6 +173,10 @@ pub struct AppState {
     
     pub sa_temp: f32,
     pub sa_cooling: f32,
+    pub sa_stopping: f32,
+    pub sa_acceptance_smoothing: f32,
+    pub sa_initial_acceptance_rate: f32,
+    pub sa_delta_fitness_smoothing: f32,
     pub violation_coefficient: f32,
     pub lexicographic_distance_first: bool,
 
@@ -211,6 +215,10 @@ impl AppState {
             evaluation_type: EvaluationType::Weighted,
             sa_temp: 1000.0,
             sa_cooling: 0.9995,
+            sa_stopping: 0.001,
+            sa_acceptance_smoothing: 0.5,
+            sa_initial_acceptance_rate: 0.8,
+            sa_delta_fitness_smoothing: 0.5,
             violation_coefficient: 1000.0,
             lexicographic_distance_first: false,
             aco_evaporation_rate: 0.1,
@@ -259,7 +267,15 @@ impl AppState {
             
             match self.algo_type {
                 AlgoType::SimulatedAnnealing => {
-                    let algo = SimulatedAnnealing::new(self.sa_temp, self.sa_cooling, 0.001, instance);
+                    let algo = SimulatedAnnealing::new(
+                        self.sa_temp,
+                        self.sa_cooling,
+                        self.sa_stopping,
+                        self.sa_acceptance_smoothing,
+                        self.sa_initial_acceptance_rate,
+                        self.sa_delta_fitness_smoothing,
+                        instance
+                    );
                     
                     match self.evaluation_type {
                         EvaluationType::Weighted => {
