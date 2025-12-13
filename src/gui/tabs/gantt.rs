@@ -1,9 +1,8 @@
 use eframe::egui;
 use egui_plot::{Bar, BarChart, Legend, Orientation, Plot, PlotPoint, PlotPoints, Points, Text};
 use crate::gui::state::RunState;
-use crate::problem::Instance;
 
-pub fn show(ui: &mut egui::Ui, run_state: &RunState, instance: &Option<Instance>) {
+pub fn show(ui: &mut egui::Ui, run_state: &RunState) {
     ui.push_id("gantt_plot", |ui| {
         ui.vertical(|ui| {
             ui.label(egui::RichText::new("Gantt Chart Visualization").strong());
@@ -23,8 +22,8 @@ pub fn show(ui: &mut egui::Ui, run_state: &RunState, instance: &Option<Instance>
             .x_axis_label("Time")
             .y_axis_label("Node Index")
             .show(ui, |plot_ui| {
-                if let Some(instance) = instance {
-                    let schedule = run_state.get_schedule(instance);
+                if let Some(_instance) = &run_state.instance {
+                    let schedule = run_state.get_schedule();
                     
                     // Time Windows
                     let mut bars = Vec::new();

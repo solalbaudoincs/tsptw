@@ -1,19 +1,27 @@
 use std::cmp::Ordering;
 
 use super::Evaluation;
-use crate::problem::{instance::Instance, solution::Solution};
-
 use super::utils::run_solution;
 
+use crate::shared::{Instance, Solution};
+
 pub struct Weighted {
-    pub violation_coefficient: f32,
+    pub total_distance_weight: f32,
+    pub violation_time_weight: f32,
+    pub total_time_weight: f32,
+    pub delay_weight: f32,
 }
 
 impl Evaluation for Weighted {
     fn score(&self, problem: &Instance, solution: &Solution) -> f32 {
-        let (distance, violation) = run_solution(problem, solution);
-        self.violation_coefficient * violation + distance
+        let eval = run_solution(problem, solution);
+
+        self.total_distance_weight * eval.total_distance
+            + self.violation_time_weight * eval.violation_time
+            + self.total_time_weight * eval.total_time
+            + self.delay_weight * eval.delay
     }
+
     fn compare(&self, problem: &Instance, a: &Solution, b: &Solution) -> Ordering {
         let a_score = self.score(problem, a);
         let b_score = self.score(problem, b);

@@ -1,49 +1,105 @@
+use super::LocalSearch;
 use super::Metaheuristic;
-use crate::neighbourhood::NeighborFn;
-use crate::problem::evaluation::{Fitness, Fitnesses};
-use crate::problem::{Evaluation, Instance, Population, Solution};
 
+use crate::eval::Evaluation;
+use crate::neighborhood::{NeighborFn, Neighborhood};
+use crate::shared::{Fitness, Instance, Solution};
+
+/// Algorithme de Hill Climbing pour le TSPTW, utilisant des voisins générés par des opérations de swap et de 2-opt.
+#[derive(Clone)]
 pub struct HillClimbing {
-    nb_neighboors: usize,
+    step: usize,
+    max_steps: usize,
+    neighborhood: Neighborhood,
+    // rng: StdRng,
+    iteration: usize,
 }
 
 impl HillClimbing {
-    fn single_step<E: Evaluation, N: NeighborFn>(
-        &self,
-        solution: &mut Solution,
-        fitness: &mut Fitness,
-        instance: &Instance,
-        neighbourhood: &mut N,
-        evaluation: &E,
-    ) -> () {
-        for _ in 0..self.nb_neighboors {
-            let neighbor = neighbourhood.get_neighbor(&solution);
-            let neighbor_fitness = evaluation.score(&instance, &neighbor);
-            if neighbor_fitness < *fitness {
-                *solution = neighbor;
-                *fitness = neighbor_fitness;
-            }
+    pub fn new(step: usize, max_steps: usize, neighborhood: Neighborhood) -> Self {
+        Self {
+            step,
+            max_steps,
+            neighborhood,
+            iteration: 0,
         }
     }
 }
 
-impl Metaheuristic for HillClimbing {
-    fn step<Eval: Evaluation, N: NeighborFn>(
+impl HillClimbing {
+    fn single_step<E: Evaluation>(
         &mut self,
-        population: &mut Population,
-        fitness: &mut Fitnesses,
-        neighbourhood: &mut N,
+        solution: &mut Solution,
+        fitness: &mut Fitness,
+        instance: &Instance,
+        evaluation: &E,
+    ) -> () {
+        for _ in 0..self.step {
+            let neighbor_buffer = self.neighborhood.get_neighbor(solution);
+
+            let neighbor_fitness = evaluation.score(instance, neighbor_buffer);
+            if neighbor_fitness < *fitness {
+                solution.clone_from_slice(neighbor_buffer);
+                *fitness = neighbor_fitness;
+            }
+        }
+    }
+    fn _stop_condition_met(&self) -> bool {
+        self.iteration >= self.max_steps
+    }
+    fn _reset(&mut self) {
+        self.iteration = 0;
+    }
+}
+
+impl<Eval: Evaluation> Metaheuristic<Eval> for HillClimbing {
+    fn step(
+        &mut self,
+        population: &mut [Solution],
+        fitness: &mut [Fitness],
         instance: &Instance,
         evaluation: &Eval,
     ) {
         for i in 0..population.len() {
-            self.single_step(
-                &mut population[i],
-                &mut fitness[i],
-                instance,
-                neighbourhood,
-                evaluation,
-            );
+            self.single_step(&mut population[i], &mut fitness[i], instance, evaluation);
         }
+        self.iteration += 1;
+    }
+
+    fn get_metrics(&self) -> std::collections::HashMap<String, f32> {
+        std::collections::HashMap::new()
+    }
+    fn get_metric_names(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn stop_condition_met(&self) -> bool {
+        self._stop_condition_met()
+    }
+    fn get_iteration(&self) -> usize {
+        self.iteration
+    }
+}
+
+impl<Eval: Evaluation> LocalSearch<Eval> for HillClimbing {
+    fn search(
+        &mut self,
+        solution: &mut Solution,
+        fitness: &mut Fitness,
+        instance: &Instance,
+        evaluation: &Eval,
+    ) {
+        while !self._stop_condition_met() {
+            self.single_step(solution, fitness, instance, evaluation);
+        }
+    }
+
+    fn reset(&mut self) {
+        self._reset();
+    }
+
+    fn change_neighborhood(&mut self, neighborhood: Neighborhood) {
+        self._reset();
+        self.neighborhood = neighborhood;
     }
 }

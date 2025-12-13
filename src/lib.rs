@@ -1,7 +1,10 @@
 pub mod algorithms;
-pub mod neighbourhood;
-pub mod problem;
-pub mod runner;
 pub mod utils;
 pub mod initializer;
 pub mod gui;
+pub mod shared;
+pub mod eval;
+pub mod io;
+pub mod neighborhood;
+pub mod factories;
+// pub mod hpo;
