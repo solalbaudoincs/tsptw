@@ -17,7 +17,6 @@ pub struct SimulatedAnnealing {
     temperature: f32,
     initial_temperature: f32,
     cooling_rate: f32,
-    avg_acceptance_rate: Option<f32>,
     current_avg_fitness: Option<f32>,
     stopping_temperature: f32,
 
@@ -58,8 +57,10 @@ impl SimulatedAnnealing {
             cooling_rate,
             stopping_temperature,
             rng: StdRng::from_os_rng(),
-            
+
             avg_acceptance_rate: None,
+            
+            
             acceptance_smoothing_factor,
             initial_acceptance_rate,
             is_attained_initial_rate: false,
