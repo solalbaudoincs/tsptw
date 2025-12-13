@@ -1,5 +1,4 @@
 pub mod algorithms;
-pub mod runner;
 pub mod utils;
 pub mod initializer;
 pub mod gui;
@@ -7,5 +6,5 @@ pub mod shared;
 pub mod eval;
 pub mod io;
 pub mod neighborhood;
+pub mod factories;
 // pub mod hpo;
-// pub mod solver;

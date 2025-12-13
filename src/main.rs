@@ -1,12 +1,11 @@
-
 use clap::Parser;
-use mh_tsptw::algorithms::{SimulatedAnnealing, GeneticAlgorithm, CrossoverType, CompetitionType};
-use mh_tsptw::neighborhood::Swap;
+use mh_tsptw::algorithms::{CompetitionType, CrossoverType};
 use mh_tsptw::eval::{Evaluation, Weighted, utils::run_solution};
-use mh_tsptw::shared::{Instance, Solution};
-use mh_tsptw::io::{io_instance::load_instance, io_solution::load_solution};
-use mh_tsptw::runner::{RunConfig, run};
+use mh_tsptw::factories::{AlgoParams, AlgoType};
 use mh_tsptw::initializer::{Initializer, RandomInitializer};
+use mh_tsptw::io::{io_instance::load_instance, io_solution::load_solution};
+use mh_tsptw::neighborhood::{NeighborhoodType, LocalSearchType};
+use mh_tsptw::shared::{Instance, Solution};
 
 type Population = Vec<Solution>;
 
@@ -33,85 +32,97 @@ fn main() {
             "Metaheuristics TSPTW",
             native_options,
             Box::new(|cc| Ok(Box::new(mh_tsptw::gui::app::TspApp::new(cc)))),
-        ).unwrap();
+        )
+        .unwrap();
         return;
     }
 
     let (instance, _graph_instance) = load_instance(CHALLENGE_PATHS[CHALLENGE_NB - 1]).unwrap();
     let evaluation = Weighted {
-        violation_coefficient: 10000000.0f32,
-    };
-    let mut neighborhood = Swap::new();
-
-
-    let sa_config = RunConfig {
-        max_iterations: 10000,
+        total_distance_weight: 1.0,
+        violation_time_weight: 10000.0,
+        total_time_weight: 0.0,
+        delay_weight: 0.0,
     };
 
-    let ga_config = RunConfig {
-        max_iterations: 1000,
-    };
+    // Simulated Annealing with factory pattern
+    let sa_params = AlgoParams::new()
+        .initial_temperature(1000.0)
+        .cooling_rate(0.995)
+        .stopping_temperature(0.001)
+        .acceptance_smoothing_factor(0.9)
+        .initial_acceptance_rate(0.8)
+        .delta_fitness_smoothing_factor(0.9)
+        .neighborhood_type(NeighborhoodType::Swap);
 
+    let sa_config = sa_params.build_config(AlgoType::SimulatedAnnealing).unwrap();
+    let sa_factory = sa_config.into_factory();
+    let mut sa_algorithm = sa_factory.build(&instance);
+
+    let max_iterations = 10000;
     let mut sa_population = build_initial_population(&instance);
-    let mut fitnesss: Vec<f32> = sa_population
+
+    for _ in 0..max_iterations {
+        let mut fitnesss: Vec<f32> = sa_population
+            .iter()
+            .map(|sol| evaluation.score(&instance, sol))
+            .collect();
+        sa_algorithm.step(&mut sa_population, &mut fitnesss, &instance, &evaluation);
+    }
+
+    let sa_best = sa_population
         .iter()
-        .map(|sol| evaluation.score(&instance, sol))
-        .collect();
-
-    
-    let sa_init_temp = 1000.0;
-    let sa_min_temp = 0.001;
-    let mut sa_algorithm = SimulatedAnnealing::new(
-        sa_init_temp,
-        0.995,
-        sa_min_temp,
-        0.9,  // acceptance_smoothing_factor
-        0.8,  // initial_acceptance_rate
-        0.9,  // delta_fitness_smoothing_factor
-        &instance
-    );
-
-    let sa_best = run(
-        &instance,
-        &mut sa_population,
-        &mut fitnesss,
-        &mut sa_algorithm,
-        &mut neighborhood,
-        &evaluation,
-        &sa_config,
-    );
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            evaluation
+                .score(&instance, a)
+                .partial_cmp(&evaluation.score(&instance, b))
+                .unwrap()
+        })
+        .map(|(idx, _)| idx);
     report_result("Simulated Annealing", &instance, &sa_population, sa_best);
 
-    // Genetic Algorithm
+    // Genetic Algorithm with factory pattern
     let ga_population_size = 100;
+    let ga_params = AlgoParams::new()
+        .crossover_rate(0.8)
+        .crossover_type(CrossoverType::PMX)
+        .elitism_rate(0.1)
+        .competition_participation_rate(0.5)
+        .competition_type(CompetitionType::Tournament)
+        .population_size(ga_population_size)
+        .max_iter(1000)
+        .mutation_rate(0.1)
+        .local_search_type(LocalSearchType::Swap);
+
+    let ga_config = ga_params.build_config(AlgoType::GeneticAlgorithm).unwrap();
+    let ga_factory = ga_config.into_factory();
+    let mut ga_algorithm = ga_factory.build(&instance);
+
     let mut random_init = RandomInitializer;
     let mut ga_population: Vec<Solution> = (0..ga_population_size)
         .map(|_| random_init.initialize(&instance))
         .collect();
-    let mut ga_fitnesss: Vec<f32> = ga_population
-        .iter()
-        .map(|sol| evaluation.score(&instance, sol))
-        .collect();
-    
-    let mut ga_algorithm = GeneticAlgorithm::new(
-        &instance,
-        0.8,  // crossover_rate
-        CrossoverType::PMX,
-        0.1,  // elitism_rate
-        0.5,  // competition_participation_rate
-        CompetitionType::Tournament,
-        ga_population_size,
-    );
 
-    let ga_best = run(
-        &instance,
-        &mut ga_population,
-        &mut ga_fitnesss,
-        &mut ga_algorithm,
-        &mut neighborhood,
-        &evaluation,
-        &ga_config,
-    );
+    let ga_max_iterations = 1000;
+    for _ in 0..ga_max_iterations {
+        let mut ga_fitnesss: Vec<f32> = ga_population
+            .iter()
+            .map(|sol| evaluation.score(&instance, sol))
+            .collect();
+        ga_algorithm.step(&mut ga_population, &mut ga_fitnesss, &instance, &evaluation);
+    }
+
+    let ga_best = ga_population
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            evaluation
+                .score(&instance, a)
+                .partial_cmp(&evaluation.score(&instance, b))
+                .unwrap()
+        })
+        .map(|(idx, _)| idx);
     report_result("Genetic Algorithm", &instance, &ga_population, ga_best);
 
     let example_solution = load_solution(&EXAMPLE_SOLUTION_PATHS[CHALLENGE_NB - 1].to_string());
