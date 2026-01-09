@@ -129,7 +129,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                   ui.heading("Execution");
                   ui.add(egui::Slider::new(&mut state.steps_per_frame, 1..=10000).text("Steps/Frame"));
                   ui.add(egui::Slider::new(&mut state.algo_config.max_steps, 100..=1000000).text("Max Steps"));
-                  ui.add(egui::Slider::new(&mut state.parallel_runs_count, 1..=200).text("Parallel Runs"));
+                  ui.add(egui::Slider::new(&mut state.parallel_runs_count, 1..=1000).text("Parallel Runs"));
               });
   
               ui.add_space(20.0);
