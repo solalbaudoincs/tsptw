@@ -23,8 +23,33 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             egui::Grid::new("runs_grid")
                 .spacing(Vec2::new(spacing, spacing))
                 .show(ui, |ui| {
-                    for (i, run) in state.runs.iter().enumerate() {
-                        ui.push_id(i, |ui| {
+                    // Sort indices by score (violations first, then distance)
+                    let mut sorted_indices: Vec<usize> = (0..state.runs.len()).collect();
+                    sorted_indices.sort_by(|&a, &b| {
+                        let run_a = &state.runs[a];
+                        let run_b = &state.runs[b];
+                        
+                        let last_a = run_a.history.last();
+                        let last_b = run_b.history.last();
+
+                        match (last_a, last_b) {
+                            (Some(ha), Some(hb)) => {
+                                let res = ha.current_viol.partial_cmp(&hb.current_viol).unwrap_or(std::cmp::Ordering::Equal);
+                                if res == std::cmp::Ordering::Equal {
+                                    ha.current_dist.partial_cmp(&hb.current_dist).unwrap_or(std::cmp::Ordering::Equal)
+                                } else {
+                                    res
+                                }
+                            }
+                            (Some(_), None) => std::cmp::Ordering::Less,
+                            (None, Some(_)) => std::cmp::Ordering::Greater,
+                            (None, None) => a.cmp(&b),
+                        }
+                    });
+
+                    for (grid_i, &real_i) in sorted_indices.iter().enumerate() {
+                        let run = &state.runs[real_i];
+                        ui.push_id(real_i, |ui| {
                             let (rect, resp) = ui.allocate_exact_size(Vec2::new(card_width, card_height), egui::Sense::click());
                             
                             ui.painter().rect_filled(rect, 5.0, egui::Color32::from_gray(50));
@@ -33,7 +58,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                             }
                             
                             if resp.clicked() {
-                                state.selected_run_index = Some(i);
+                                state.selected_run_index = Some(real_i);
                             }
                             
                             // Draw content inside card
@@ -54,11 +79,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                 let history_len = run.history.len();
                                 if history_len > 1 {
                                     let points: Vec<[f64; 2]> = run.history.iter().enumerate()
-                                        .map(|(i, h)| [i as f64, h.current_dist as f64])
+                                        .map(|(step, h)| [step as f64, h.current_dist as f64])
                                         .collect();
                                     
                                     ui.add(egui::Label::new("Distance"));
-                                    Plot::new(format!("spark_dist_{}", i))
+                                    Plot::new(format!("spark_dist_{}", real_i))
                                         .show_axes([false, false])
                                         .show_grid([false, false])
                                         .allow_drag(false)
@@ -70,11 +95,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                         });
 
                                     let points_viol: Vec<[f64; 2]> = run.history.iter().enumerate()
-                                        .map(|(i, h)| [i as f64, h.current_viol as f64])
+                                        .map(|(step, h)| [step as f64, h.current_viol as f64])
                                         .collect();
                                     
                                     ui.add(egui::Label::new("Violation"));
-                                    Plot::new(format!("spark_viol_{}", i))
+                                    Plot::new(format!("spark_viol_{}", real_i))
                                         .show_axes([false, false])
                                         .show_grid([false, false])
                                         .allow_drag(false)
@@ -88,7 +113,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                             });
                         });
 
-                        if (i + 1) % cols == 0 {
+                        if (grid_i + 1) % cols == 0 {
                             ui.end_row();
                         }
                     }
