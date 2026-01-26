@@ -6,9 +6,11 @@ use crate::algorithms::{LocalSearch, SimulatedAnnealing, HillClimbing};
 
 mod swap;
 mod twoopt;
+mod bandit;
 
 pub use swap::Swap;
 pub use twoopt::TwoOpt;
+pub use bandit::Bandit;
 //pub use utils::NeighborFnMixer;
 
 
