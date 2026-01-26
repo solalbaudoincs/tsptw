@@ -2,7 +2,7 @@ use super::LocalSearch;
 use super::Metaheuristic;
 
 use crate::eval::Evaluation;
-use crate::neighborhood::{NeighborFn, Neighborhood};
+use crate::neighborhood::{NeighborFn, Neighborhood, BanditStats};
 use crate::shared::{Fitness, Instance, Solution};
 
 use rand::Rng;
@@ -41,6 +41,7 @@ pub struct SimulatedAnnealing {
     pub backtracking_interval: usize,
 
     iteration: usize,
+    pub max_warmup_steps: usize,
 }
 
 impl SimulatedAnnealing {
@@ -53,6 +54,7 @@ impl SimulatedAnnealing {
         delta_fitness_smoothing_factor: f32,
         neighborhood: Neighborhood, // Changed to Enum
         backtracking_interval: usize,
+        max_warmup_steps: usize,
     ) -> Self {
         SimulatedAnnealing {
             neighborhood,
@@ -61,7 +63,7 @@ impl SimulatedAnnealing {
             cooling_rate,
             stopping_temperature,
             rng: StdRng::from_os_rng(),
-            
+
             avg_acceptance_rate: None,
             acceptance_smoothing_factor,
             initial_acceptance_rate,
@@ -75,6 +77,117 @@ impl SimulatedAnnealing {
             backtracking_interval,
 
             iteration: 0,
+            max_warmup_steps,
+        }
+    }
+
+    pub fn new_with_seed(
+        initial_temperature: f32,
+        cooling_rate: f32,
+        stopping_temperature: f32,
+        acceptance_smoothing_factor: f32,
+        initial_acceptance_rate: f32,
+        delta_fitness_smoothing_factor: f32,
+        neighborhood: Neighborhood,
+        backtracking_interval: usize,
+        seed: u64,
+        max_warmup_steps: usize,
+    ) -> Self {
+        SimulatedAnnealing {
+            neighborhood,
+            temperature: initial_temperature,
+            initial_temperature,
+            cooling_rate,
+            stopping_temperature,
+            rng: StdRng::seed_from_u64(seed),
+
+            avg_acceptance_rate: None,
+            acceptance_smoothing_factor,
+            initial_acceptance_rate,
+            is_attained_initial_rate: false,
+            avg_delta_fitness: None,
+            delta_fitness_smoothing_factor,
+            current_fitness_avg: None,
+
+            best_solution: None,
+            best_fitness: None,
+            backtracking_interval,
+
+            iteration: 0,
+            max_warmup_steps: max_warmup_steps,
+        }
+    }
+
+    pub fn new_cold_start(
+        initial_temperature: f32,
+        cooling_rate: f32,
+        stopping_temperature: f32,
+        acceptance_smoothing_factor: f32,
+        initial_acceptance_rate: f32,
+        delta_fitness_smoothing_factor: f32,
+        neighborhood: Neighborhood,
+        backtracking_interval: usize,
+        max_warmup_steps: usize,
+    ) -> Self {
+        SimulatedAnnealing {
+            neighborhood,
+            temperature: initial_temperature,
+            initial_temperature,
+            cooling_rate,
+            stopping_temperature,
+            rng: StdRng::from_os_rng(),
+
+            avg_acceptance_rate: None,
+            acceptance_smoothing_factor,
+            initial_acceptance_rate,
+            is_attained_initial_rate: true,  // Skip warmup
+            avg_delta_fitness: None,
+            delta_fitness_smoothing_factor,
+            current_fitness_avg: None,
+
+            best_solution: None,
+            best_fitness: None,
+            backtracking_interval,
+
+            iteration: 0,
+            max_warmup_steps: max_warmup_steps,
+        }
+    }
+
+    pub fn new_cold_start_with_seed(
+        initial_temperature: f32,
+        cooling_rate: f32,
+        stopping_temperature: f32,
+        acceptance_smoothing_factor: f32,
+        initial_acceptance_rate: f32,
+        delta_fitness_smoothing_factor: f32,
+        neighborhood: Neighborhood,
+        backtracking_interval: usize,
+        seed: u64,
+        max_warmup_steps: usize,
+    ) -> Self {
+        SimulatedAnnealing {
+            neighborhood,
+            temperature: initial_temperature,
+            initial_temperature,
+            cooling_rate,
+            stopping_temperature,
+            rng: StdRng::seed_from_u64(seed),
+
+            avg_acceptance_rate: None,
+            acceptance_smoothing_factor,
+            initial_acceptance_rate,
+            is_attained_initial_rate: true,  // Skip warmup
+            avg_delta_fitness: None,
+            delta_fitness_smoothing_factor,
+            current_fitness_avg: None,
+
+            best_solution: None,
+            best_fitness: None,
+            backtracking_interval,
+
+            iteration: 0,
+            max_warmup_steps: max_warmup_steps,
         }
     }
 
@@ -110,12 +223,28 @@ impl SimulatedAnnealing {
             return true;
         }
 
+        if self.iteration > self.max_warmup_steps {
+            return true;
+        }
+
         if self.avg_acceptance_rate.unwrap_or(0.0) > self.initial_acceptance_rate {
             self.is_attained_initial_rate = true;
             return true;
         }
 
         false
+    }
+
+    pub fn temperature(&self) -> f32 {
+        self.temperature
+    }
+
+    pub fn get_bandit_stats(&self) -> Option<BanditStats> {
+        if let crate::neighborhood::Neighborhood::Bandit(_bandit) = &self.neighborhood {
+            self.neighborhood.get_bandit_stats()
+        } else {
+            None
+        }
     }
 
     
@@ -160,7 +289,7 @@ impl SimulatedAnnealing {
         
         let u = self.rng.random_range(0.0..1.0);
 
-        if u < accept_prob {
+        let reward = if u < accept_prob {
             solution.clone_from_slice(neighbor);
             *fitness = neighbor_fitness;
 
@@ -173,7 +302,14 @@ impl SimulatedAnnealing {
 
             let current_avg_fitness = self.current_fitness_avg.get_or_insert(*fitness);
             *current_avg_fitness = 0.9 * (*current_avg_fitness) + 0.1 * (*fitness);
-        }
+
+            ((*fitness as f64) - (neighbor_fitness as f64)).abs()
+        } else {
+            0.0
+        };
+
+        // Update neighborhood reward (for bandit)
+        self.neighborhood.update_reward(reward);
 
         // Update temperature, either by cooling or by updating the temperature until the initial acceptance rate is reached
         if self.start_condition_met() {

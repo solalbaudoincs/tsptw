@@ -93,7 +93,10 @@ pub struct AlgoParams {
     pub initial_acceptance_rate: Option<f32>,
     pub delta_fitness_smoothing_factor: Option<f32>,
     pub sa_backtracking_interval: Option<usize>,
-    
+    pub sa_warmup_steps: Option<usize>,
+    pub sa_seed: Option<u64>,
+    pub sa_cold_start: Option<bool>,
+
     // Genetic Algorithm
     pub crossover_rate: Option<f32>,
     pub crossover_type: Option<CrossoverType>,
@@ -163,7 +166,22 @@ impl AlgoParams {
         self.sa_backtracking_interval = Some(val);
         self
     }
-    
+
+    pub fn sa_warmup_steps(mut self, val: usize) -> Self {
+        self.sa_warmup_steps = Some(val);
+        self
+    }
+
+    pub fn sa_seed(mut self, val: u64) -> Self {
+        self.sa_seed = Some(val);
+        self
+    }
+
+    pub fn sa_cold_start(mut self, val: bool) -> Self {
+        self.sa_cold_start = Some(val);
+        self
+    }
+
     pub fn crossover_rate(mut self, val: f32) -> Self {
         self.crossover_rate = Some(val);
         self
@@ -272,6 +290,9 @@ impl AlgoParams {
             neighborhood_type: self.neighborhood_type
                 .ok_or("Missing parameter: neighborhood_type for Simulated Annealing")?,
             backtracking_interval: self.sa_backtracking_interval.unwrap_or(0),
+            warmup_steps: self.sa_warmup_steps.unwrap_or(0),
+            seed: self.sa_seed,
+            cold_start: self.sa_cold_start.unwrap_or(false),
         })
     }
     

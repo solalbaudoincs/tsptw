@@ -41,6 +41,7 @@ impl<Eval: Evaluation> Factory<Eval> for VNSFactory {
                     sa_config.delta_fitness_smoothing_factor,
                     neighborhood,
                     sa_config.backtracking_interval,
+                    sa_config.warmup_steps,
                 );
                 let vns = VNS::new(neighborhoods, sa);
                 Box::new(vns)

@@ -1,4 +1,4 @@
-use super::NeighborFn;
+use super::{NeighborFn, BanditStats};
 use crate::shared::{Solution, Instance, Fitness};
 use crate::algorithms::LocalSearch;
 use crate::eval::Evaluation;
@@ -26,6 +26,11 @@ impl Bandit {
             decay,
             last_selected: 0,
         }
+    }
+
+    pub fn new_with_seed(_instance: &Instance, arms: Vec<Neighborhood>, decay: f64, _seed: u64) -> Self {
+        // Arms are already seeded during construction, so this is just a convenience constructor
+        Self::new(arms, decay)
     }
 
     fn select_arm(&mut self) -> usize {
@@ -63,6 +68,27 @@ impl Bandit {
         self.rewards[arm] += reward;
         self.counts[arm] += 1.0;
         self.total_pulls = self.counts.iter().sum();
+    }
+
+    pub fn update_reward(&mut self, reward: f64) {
+        self.update(self.last_selected, reward);
+    }
+
+    pub fn get_bandit_stats(&self) -> BanditStats {
+        BanditStats {
+            swap_selections: self.counts.get(0).map(|&c| c as usize).unwrap_or(0),
+            twoopt_selections: self.counts.get(1).map(|&c| c as usize).unwrap_or(0),
+            swap_avg_reward: if self.counts.get(0).map(|&c| c > 0.0).unwrap_or(false) {
+                self.rewards.get(0).copied().unwrap_or(0.0) / self.counts.get(0).copied().unwrap_or(1.0)
+            } else {
+                0.0
+            },
+            twoopt_avg_reward: if self.counts.get(1).map(|&c| c > 0.0).unwrap_or(false) {
+                self.rewards.get(1).copied().unwrap_or(0.0) / self.counts.get(1).copied().unwrap_or(1.0)
+            } else {
+                0.0
+            },
+        }
     }
 }
 

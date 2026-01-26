@@ -3,3 +3,19 @@ data.zip
 cours
 
 .claude
+
+*.pgf
+*.tex
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.nav
+*.pdf
+
+*.csv
+
+*.json

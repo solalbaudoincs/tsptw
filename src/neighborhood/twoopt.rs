@@ -21,6 +21,13 @@ impl TwoOpt {
             buffer: vec![0; instance.size()],
         }
     }
+
+    pub fn new_with_seed(instance: &Instance, seed: u64) -> Self {
+        TwoOpt {
+            rand: StdRng::seed_from_u64(seed),
+            buffer: vec![0; instance.size()],
+        }
+    }
 }
 
 impl NeighborFn for TwoOpt {

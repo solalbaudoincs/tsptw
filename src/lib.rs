@@ -7,4 +7,5 @@ pub mod eval;
 pub mod io;
 pub mod neighborhood;
 pub mod factories;
+pub mod experiments;
 // pub mod hpo;

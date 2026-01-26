@@ -5,4 +5,4 @@ pub trait Initializer {
 }
 
 mod random_init;
-pub use random_init::RandomInitializer;
+pub use random_init::{RandomInitializer, SeededRandomInitializer};

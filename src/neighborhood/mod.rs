@@ -3,21 +3,33 @@ use crate::shared::Solution;
 use crate::shared::Fitness;
 use crate::eval::Evaluation;
 use crate::algorithms::{LocalSearch, SimulatedAnnealing, HillClimbing};
+use serde::Serialize;
 
 mod swap;
 mod twoopt;
 mod bandit;
+mod alternating;
 
 pub use swap::Swap;
 pub use twoopt::TwoOpt;
 pub use bandit::Bandit;
-//pub use utils::NeighborFnMixer;
+pub use alternating::Alternating;
+
+#[derive(Clone, Serialize, Debug)]
+pub struct BanditStats {
+    pub swap_selections: usize,
+    pub twoopt_selections: usize,
+    pub swap_avg_reward: f64,
+    pub twoopt_avg_reward: f64,
+}
 
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Serialize, serde::Deserialize, Debug)]
 pub enum NeighborhoodType {
     Swap,
     TwoOpt,
+    Alternating,
+    Bandit,
 }
 
 impl Default for NeighborhoodType {
@@ -30,6 +42,8 @@ impl Default for NeighborhoodType {
 pub enum Neighborhood {
     Swap(Swap),
     TwoOpt(TwoOpt),
+    Alternating(Alternating),
+    Bandit(Bandit),
 }
 
 impl Neighborhood {
@@ -37,6 +51,29 @@ impl Neighborhood {
         match neighborhood_type {
             NeighborhoodType::Swap => Neighborhood::Swap(Swap::new(instance)),
             NeighborhoodType::TwoOpt => Neighborhood::TwoOpt(TwoOpt::new(instance)),
+            NeighborhoodType::Alternating => Neighborhood::Alternating(Alternating::new(instance)),
+            NeighborhoodType::Bandit => {
+                let arms = vec![
+                    Neighborhood::Swap(Swap::new(instance)),
+                    Neighborhood::TwoOpt(TwoOpt::new(instance)),
+                ];
+                Neighborhood::Bandit(Bandit::new(arms, 0.9))
+            }
+        }
+    }
+
+    pub fn from_type_with_seed(neighborhood_type: NeighborhoodType, instance: &Instance, seed: u64) -> Self {
+        match neighborhood_type {
+            NeighborhoodType::Swap => Neighborhood::Swap(Swap::new_with_seed(instance, seed)),
+            NeighborhoodType::TwoOpt => Neighborhood::TwoOpt(TwoOpt::new_with_seed(instance, seed)),
+            NeighborhoodType::Alternating => Neighborhood::Alternating(Alternating::new_with_seed(instance, seed)),
+            NeighborhoodType::Bandit => {
+                let arms = vec![
+                    Neighborhood::Swap(Swap::new_with_seed(instance, seed)),
+                    Neighborhood::TwoOpt(TwoOpt::new_with_seed(instance, seed.wrapping_add(1))),
+                ];
+                Neighborhood::Bandit(Bandit::new(arms, 0.9))
+            }
         }
     }
 }
@@ -80,6 +117,7 @@ impl LocalSearchImpl {
                     0.9,    // delta_fitness_smoothing_factor
                     neighborhood,
                     0,      // backtracking_interval
+                    0,      // warmup_steps
                 ))
             },
             LocalSearchType::HillClimbing => {
@@ -127,6 +165,8 @@ impl<Eval: Evaluation> LocalSearch<Eval> for LocalSearchImpl {
 
 pub trait NeighborFn : Send + Sync {
     fn get_neighbor(&mut self, solution: &Solution) -> &Solution;
+    fn update_reward(&mut self, _reward: f64) {}
+    fn get_bandit_stats(&self) -> Option<BanditStats> { None }
 }
 
 impl NeighborFn for Neighborhood {
@@ -134,6 +174,22 @@ impl NeighborFn for Neighborhood {
         match self {
             Neighborhood::Swap(n) => n.get_neighbor(solution),
             Neighborhood::TwoOpt(n) => n.get_neighbor(solution),
+            Neighborhood::Alternating(n) => n.get_neighbor(solution),
+            Neighborhood::Bandit(n) => n.get_neighbor(solution),
+        }
+    }
+
+    fn update_reward(&mut self, reward: f64) {
+        match self {
+            Neighborhood::Bandit(n) => n.update_reward(reward),
+            _ => {}
+        }
+    }
+
+    fn get_bandit_stats(&self) -> Option<BanditStats> {
+        match self {
+            Neighborhood::Bandit(n) => Some(n.get_bandit_stats()),
+            _ => None
         }
     }
 }
