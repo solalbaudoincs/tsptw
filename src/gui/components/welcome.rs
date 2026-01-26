@@ -69,6 +69,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                       ui.add(egui::Slider::new(&mut state.algo_config.sa_acceptance_smoothing, 0.0..=1.0).text("Acceptance Smoothing"));
                       ui.add(egui::Slider::new(&mut state.algo_config.sa_initial_acceptance_rate, 0.0..=1.0).text("Initial Acceptance Rate"));
                       ui.add(egui::Slider::new(&mut state.algo_config.sa_delta_fitness_smoothing, 0.0..=1.0).text("Delta Fitness Smoothing"));
+                      ui.add(egui::Slider::new(&mut state.algo_config.sa_backtracking_interval, 0..=100000).text("Backtracking Interval (0 = off)"));
                   }
 
                   // Genetic Algorithm parameters
@@ -128,7 +129,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
               ui.group(|ui| {
                   ui.heading("Execution");
                   ui.add(egui::Slider::new(&mut state.steps_per_frame, 1..=10000).text("Steps/Frame"));
-                  ui.add(egui::Slider::new(&mut state.algo_config.max_steps, 100..=1000000).text("Max Steps"));
+                  ui.add(egui::Slider::new(&mut state.algo_config.max_steps, 100..=100000000).text("Max Steps"));
                   ui.add(egui::Slider::new(&mut state.parallel_runs_count, 1..=1000).text("Parallel Runs"));
               });
   

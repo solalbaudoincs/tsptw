@@ -41,6 +41,7 @@ pub struct AlgoConfigParams {
     pub sa_acceptance_smoothing: f32,
     pub sa_initial_acceptance_rate: f32,
     pub sa_delta_fitness_smoothing: f32,
+    pub sa_backtracking_interval: usize,
     
     // Genetic Algorithm
     pub ga_crossover_rate: f32,
@@ -70,12 +71,13 @@ impl Default for AlgoConfigParams {
     fn default() -> Self {
         Self {
             // Simulated Annealing
-            sa_temp: 1000.0,
-            sa_cooling: 0.995,
+            sa_temp: 63000.0,
+            sa_cooling: 0.99999,
             sa_stopping: 0.001,
             sa_acceptance_smoothing: 0.9,
-            sa_initial_acceptance_rate: 0.8,
+            sa_initial_acceptance_rate: 0.99999,
             sa_delta_fitness_smoothing: 0.9,
+            sa_backtracking_interval: 0,
             
             // Genetic Algorithm
             ga_crossover_rate: 0.8,
@@ -97,7 +99,7 @@ impl Default for AlgoConfigParams {
             // Common parameters
             neighborhood: NeighborhoodType::default(),
             local_search_type: LocalSearchType::default(),
-            max_steps: 1000,
+            max_steps: 100000000,
             population_size: 100,
         }
     }
@@ -121,9 +123,9 @@ impl Default for EvalConfigParams {
     fn default() -> Self {
         Self {
             total_distance_weight: 1.0,
-            violation_time_weight: 100.0,
+            violation_time_weight: 10.0,
             total_time_weight: 0.0,
-            delay_weight: 0.0,
+            delay_weight: 5.0,
             violation_coefficient: 100.0,
             lexicographic_distance_first: true,
         }
@@ -379,18 +381,18 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             phase: AppPhase::Configuration,
-            instance_path: "data/inst1".to_string(),
+            instance_path: "data/inst_concours".to_string(),
             instance: None,
             graph_instance: None,
             algo_type: AlgoType::SimulatedAnnealing,
             evaluation_type: EvaluationType::Weighted,
             algo_config: AlgoConfigParams::default(),
             eval_config: EvalConfigParams::default(),
-            steps_per_frame: 100,
+            steps_per_frame: 10000,
             runs: Vec::new(),
             selected_run_index: None,
             next_run_id: 0,
-            parallel_runs_count: 1,
+            parallel_runs_count: 1000,
             view_mode: ViewMode::Grid,
             left_col_ratio: 0.6,
             right_top_ratio: 0.5,
@@ -423,6 +425,7 @@ impl AppState {
             .acceptance_smoothing_factor(self.algo_config.sa_acceptance_smoothing)
             .initial_acceptance_rate(self.algo_config.sa_initial_acceptance_rate)
             .delta_fitness_smoothing_factor(self.algo_config.sa_delta_fitness_smoothing)
+            .sa_backtracking_interval(self.algo_config.sa_backtracking_interval)
             // Genetic Algorithm parameters
             .crossover_rate(self.algo_config.ga_crossover_rate)
             .crossover_type(self.algo_config.ga_crossover_type)

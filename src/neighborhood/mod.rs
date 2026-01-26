@@ -77,6 +77,7 @@ impl LocalSearchImpl {
                     0.8,    // initial_acceptance_rate
                     0.9,    // delta_fitness_smoothing_factor
                     neighborhood,
+                    0,      // backtracking_interval
                 ))
             },
             LocalSearchType::HillClimbing => {

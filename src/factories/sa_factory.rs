@@ -14,6 +14,7 @@ pub struct SAConfig {
     pub initial_acceptance_rate: f32,
     pub delta_fitness_smoothing_factor: f32,
     pub neighborhood_type: NeighborhoodType,
+    pub backtracking_interval: usize,
 }
 
 #[derive(Clone)]
@@ -32,6 +33,7 @@ impl<Eval: Evaluation> Factory<Eval> for SAFactory {
             self.config.initial_acceptance_rate,
             self.config.delta_fitness_smoothing_factor,
             neighborhood,
+            self.config.backtracking_interval,
         );
         Box::new(sa)
     }

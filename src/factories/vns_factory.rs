@@ -40,6 +40,7 @@ impl<Eval: Evaluation> Factory<Eval> for VNSFactory {
                     sa_config.initial_acceptance_rate,
                     sa_config.delta_fitness_smoothing_factor,
                     neighborhood,
+                    sa_config.backtracking_interval,
                 );
                 let vns = VNS::new(neighborhoods, sa);
                 Box::new(vns)

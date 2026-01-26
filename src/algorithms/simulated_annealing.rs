@@ -36,6 +36,10 @@ pub struct SimulatedAnnealing {
     // Avg fitness of the current solutions
     pub current_fitness_avg: Option<f32>,
 
+    pub best_solution: Option<Solution>,
+    pub best_fitness: Option<Fitness>,
+    pub backtracking_interval: usize,
+
     iteration: usize,
 }
 
@@ -48,6 +52,7 @@ impl SimulatedAnnealing {
         initial_acceptance_rate: f32,
         delta_fitness_smoothing_factor: f32,
         neighborhood: Neighborhood, // Changed to Enum
+        backtracking_interval: usize,
     ) -> Self {
         SimulatedAnnealing {
             neighborhood,
@@ -64,6 +69,10 @@ impl SimulatedAnnealing {
             avg_delta_fitness: None,
             delta_fitness_smoothing_factor,
             current_fitness_avg: None,
+
+            best_solution: None,
+            best_fitness: None,
+            backtracking_interval,
 
             iteration: 0,
         }
@@ -132,6 +141,12 @@ impl SimulatedAnnealing {
         instance: &Instance,
         evaluation: &Eval,
     ) {
+        // Initialize best tracking if not done
+        if self.best_fitness.is_none() {
+            self.best_fitness = Some(*fitness);
+            self.best_solution = Some(solution.clone());
+        }
+
         let neighbor = self.neighborhood.get_neighbor(solution);
 
         let neighbor_fitness = evaluation.score(instance, neighbor);
@@ -148,6 +163,13 @@ impl SimulatedAnnealing {
         if u < accept_prob {
             solution.clone_from_slice(neighbor);
             *fitness = neighbor_fitness;
+
+            if let Some(best_fit) = self.best_fitness {
+                if *fitness < best_fit {
+                    self.best_fitness = Some(*fitness);
+                    self.best_solution = Some(solution.clone());
+                }
+            }
 
             let current_avg_fitness = self.current_fitness_avg.get_or_insert(*fitness);
             *current_avg_fitness = 0.9 * (*current_avg_fitness) + 0.1 * (*fitness);
@@ -187,6 +209,15 @@ impl<Eval: Evaluation> Metaheuristic<Eval> for SimulatedAnnealing {
         }
 
         self.iteration += 1;
+
+        if self.backtracking_interval > 0 && self.iteration % self.backtracking_interval == 0 {
+            if let (Some(best_sol), Some(best_fit)) = (&self.best_solution, self.best_fitness) {
+                for i in 0..population.len() {
+                    population[i].clone_from_slice(best_sol);
+                    fitness[i] = best_fit;
+                }
+            }
+        }
     }
 
     fn get_metrics(&self) -> HashMap<String, f32> {

@@ -92,6 +92,7 @@ pub struct AlgoParams {
     pub acceptance_smoothing_factor: Option<f32>,
     pub initial_acceptance_rate: Option<f32>,
     pub delta_fitness_smoothing_factor: Option<f32>,
+    pub sa_backtracking_interval: Option<usize>,
     
     // Genetic Algorithm
     pub crossover_rate: Option<f32>,
@@ -155,6 +156,11 @@ impl AlgoParams {
     
     pub fn delta_fitness_smoothing_factor(mut self, val: f32) -> Self {
         self.delta_fitness_smoothing_factor = Some(val);
+        self
+    }
+
+    pub fn sa_backtracking_interval(mut self, val: usize) -> Self {
+        self.sa_backtracking_interval = Some(val);
         self
     }
     
@@ -265,6 +271,7 @@ impl AlgoParams {
                 .ok_or("Missing parameter: delta_fitness_smoothing_factor for Simulated Annealing")?,
             neighborhood_type: self.neighborhood_type
                 .ok_or("Missing parameter: neighborhood_type for Simulated Annealing")?,
+            backtracking_interval: self.sa_backtracking_interval.unwrap_or(0),
         })
     }
     
